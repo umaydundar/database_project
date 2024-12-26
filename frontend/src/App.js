@@ -1,25 +1,33 @@
-import logo from './logo.svg';
-import './App.css';
+// App.js
+import React, { useEffect, useRef } from "react";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import MainPage from "./MainPage";
+import Register from "./Register";
+import MyCourses from "./MyCourses";
+import Schedule from "./Schedule";
+import AllCourses from "./AllCourses";
+import Ratings from "./Ratings";
+import BookPoolLane from "./BookPoolLane";
+import Profile from "./Profile";
+
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+
+    return (
+        <Router>
+            {/* Rotalar */}
+            <Routes>
+                <Route path="/" element={<MainPage/>}/>
+                <Route path="/register" element={<Register/>}/>
+                <Route path="/my-courses" element={<MyCourses/>}/>
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="/all-courses" element={<AllCourses />} />
+                <Route path="/ratings" element={<Ratings />} />
+                <Route path="/book-pool-lane" element={<BookPoolLane />} />
+                <Route path="/profile" element={<Profile />} />
+            </Routes>
+        </Router>
+    );
 }
 
 export default App;
