@@ -187,6 +187,14 @@ body, html, #root {
     transition: background-color 0.3s ease, transform 0.2s;
 }
 
+.profile-form-group img.profile-picture-preview {
+    margin-top: 10px;
+    max-width: 150px;
+    border-radius: 50%;
+    border: 2px solid #ccc;
+}
+
+
 .profile-save-button {
     background-color: var(--profile-primary-color);
     color: var(--profile-secondary-color);

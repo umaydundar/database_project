@@ -1,29 +1,33 @@
-// Profile.jsx
 import React, { useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import './Profile.css';
 
 const Profile = () => {
-    // Mock user data
     const initialUserData = {
         name: 'John Doe',
         email: 'johndoe@example.com',
-        profilePicture: 'https://via.placeholder.com/150', // Placeholder image
-        password: 'password123', // In real applications, never handle passwords like this
+        profilePicture: 'https://via.placeholder.com/150',
+        password: 'password123',
     };
 
     const [userData, setUserData] = useState(initialUserData);
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState(initialUserData);
     const [passwordVisible, setPasswordVisible] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
 
-    // Handle input changes
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setEditedData({
-            ...editedData,
-            [name]: value,
-        });
+        const { name, value, files } = e.target;
+        if (name === 'profilePicture' && files && files[0]) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setEditedData({ ...editedData, profilePicture: event.target.result });
+            };
+            reader.readAsDataURL(files[0]);
+            setSelectedFile(files[0]);
+        } else {
+            setEditedData({ ...editedData, [name]: value });
+        }
     };
 
     // Handle form submission
@@ -31,18 +35,30 @@ const Profile = () => {
         e.preventDefault();
         setUserData(editedData);
         setIsEditing(false);
-        alert('Profile updated successfully!');
+
+        // Optional: Save the uploaded file to the server
+        if (selectedFile) {
+            const formData = new FormData();
+            formData.append('profilePicture', selectedFile);
+
+            // Example API call to upload the image
+            // fetch('/api/upload', {
+            //     method: 'POST',
+            //     body: formData,
+            // }).then(() => alert('Profile updated successfully!'));
+        } else {
+            alert('Profile updated successfully!');
+        }
     };
 
     // Handle cancel editing
     const handleCancel = () => {
         setEditedData(userData);
         setIsEditing(false);
+        setSelectedFile(null);
     };
 
-    // Handle logout (placeholder)
     const handleLogout = () => {
-        // Implement your logout logic here (e.g., clearing auth tokens)
         alert('Logged out successfully!');
     };
 
@@ -53,9 +69,12 @@ const Profile = () => {
                 <div className="profile-content-container">
                     <h1 className="profile-heading">My Profile</h1>
 
-                    {/* User Information */}
                     <div className="profile-user-info">
-                        <img src={userData.profilePicture} alt="Profile" className="profile-picture" />
+                        <img
+                            src={userData.profilePicture}
+                            alt="Profile"
+                            className="profile-picture"
+                        />
                         {!isEditing ? (
                             <div className="profile-details">
                                 <p><strong>Name:</strong> {userData.name}</p>
@@ -124,16 +143,36 @@ const Profile = () => {
                                         {passwordVisible ? 'Hide' : 'Show'}
                                     </span>
                                 </div>
+                                <div className="profile-form-group">
+                                    <label htmlFor="profilePicture">Profile Picture:</label>
+                                    <input
+                                        type="file"
+                                        id="profilePicture"
+                                        name="profilePicture"
+                                        accept="image/*"
+                                        onChange={handleChange}
+                                    />
+                                    {editedData.profilePicture && (
+                                        <img
+                                            src={editedData.profilePicture}
+                                            alt="Preview"
+                                            className="profile-picture-preview"
+                                        />
+                                    )}
+                                </div>
                                 <div className="profile-form-buttons">
                                     <button type="submit" className="profile-save-button">Save</button>
-                                    <button type="button" className="profile-cancel-button" onClick={handleCancel}>Cancel</button>
+                                    <button
+                                        type="button"
+                                        className="profile-cancel-button"
+                                        onClick={handleCancel}
+                                    >
+                                        Cancel
+                                    </button>
                                 </div>
                             </form>
                         )}
                     </div>
-
-                    {/* Optional: Display User's Bookings, Cart Items, and Ratings */}
-                    {/* You can fetch and display data from other components or backend as needed */}
                 </div>
             </div>
         </div>

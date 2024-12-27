@@ -340,3 +340,9 @@ body, html, #root {
         width: 100%;
     }
 }
+
+.allcourses-enroll-button.full {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+}
