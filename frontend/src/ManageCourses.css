@@ -1,0 +1,169 @@
+/* ManageCourses.css */
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
+
+/* Scoped reset for the Manage Courses page only */
+.manage-courses-main-container{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+}
+
+.manage-courses-main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f0f2f5;
+}
+
+.manage-courses-bottom-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.manage-courses-content-container {
+    flex: 1;
+    padding: 30px 40px;
+    background-color: #f0f2f5;
+    overflow-y: auto;
+}
+
+.manage-courses-heading {
+    text-align: center;
+    color: #333333;
+    margin-bottom: 20px;
+    font-size: 32px;
+    font-weight: 500;
+}
+
+.manage-courses-section h2 {
+    color: #333333;
+    margin-bottom: 15px;
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.manage-courses-table-container {
+    overflow-x: auto;
+}
+
+.manage-courses-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: #1a1a1a;
+}
+
+.manage-courses-table th,
+.manage-courses-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.manage-courses-table th {
+    background-color: #f7f7f7;
+    color: #333333;
+    font-weight: 600;
+}
+
+.manage-courses-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.no-courses {
+    text-align: center;
+    padding: 20px 0;
+    color: #555555;
+    font-size: 16px;
+}
+
+.manage-courses-view-button,
+.manage-courses-delete-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-right: 8px;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.manage-courses-view-button {
+    background-color: #007bff;
+    color: #ffffff;
+}
+
+.manage-courses-view-button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.manage-courses-view-button:active {
+    background-color: #004085;
+}
+
+.manage-courses-delete-button {
+    background-color: #dc3545;
+    color: #ffffff;
+}
+
+.manage-courses-delete-button:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+}
+
+.manage-courses-delete-button:active {
+    background-color: #bd2130;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .manage-courses-heading {
+        font-size: 28px;
+    }
+
+    .manage-courses-section h2 {
+        font-size: 20px;
+    }
+
+    .manage-courses-table th,
+    .manage-courses-table td {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .manage-courses-view-button,
+    .manage-courses-delete-button {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .manage-courses-heading {
+        font-size: 24px;
+    }
+
+    .manage-courses-section h2 {
+        font-size: 18px;
+    }
+
+    .manage-courses-table th,
+    .manage-courses-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .manage-courses-view-button,
+    .manage-courses-delete-button {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}

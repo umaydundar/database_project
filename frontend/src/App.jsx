@@ -15,6 +15,11 @@ import UpcomingBookings from "./UpcomingBookings";
 import Membership from "./Membership";
 import Cafe from "./Cafe";
 import CreateCourse from "./CreateCourse";
+import Report from "./Report";
+import ManageUsers from "./ManageUsers";
+import ManageCourses from "./ManageCourses";
+import ManagePoolBookings from "./ManagePoolBookings";
+import LifeguardSelect from "./LifeguardSelect";
 
 function App() {
 
@@ -34,7 +39,12 @@ function App() {
                 <Route path="/upcoming-bookings" element={<UpcomingBookings />} />
                 <Route path="/membership" element={<Membership />} />
                 <Route path="/cafe" element={<Cafe />} />
-                <Route path="create-course" element={<CreateCourse />} />
+                <Route path="/create-course" element={<CreateCourse />} />
+                <Route path="/report" element={<Report />} />
+                <Route path="/manage-users" element={<ManageUsers />} />
+                <Route path="/manage-courses" element={<ManageCourses />} />
+                <Route path="/manage-bookings" element={<ManagePoolBookings />} />
+                <Route path="/lifeguard-select" element={<LifeguardSelect />} />
             </Routes>
         </Router>
     );
