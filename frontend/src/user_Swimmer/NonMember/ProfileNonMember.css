@@ -1,0 +1,302 @@
+/* Profile.css */
+
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+    --profile-primary-color: #4a90e2;
+    --profile-secondary-color: #ffffff;
+    --profile-background-overlay: rgba(0, 0, 0, 0.6);
+    --profile-input-border: #ccc;
+    --profile-input-focus-border: #4a90e2;
+    --profile-button-hover: #357ABD;
+    --profile-text-color: #333333;
+    --profile-link-color: #4a90e2;
+    --profile-link-hover-color: #357ABD;
+    --profile-card-background: #ffffff;
+    --profile-card-border: #ddd;
+    --profile-card-shadow: rgba(0, 0, 0, 0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body, html, #root {
+    height: 100%;
+    width: 100%;
+}
+
+.profile-main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f0f2f5;
+}
+
+.profile-bottom-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.profile-content-container {
+    flex: 1;
+    padding: 30px 40px;
+    background-color: #f0f2f5;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.profile-heading {
+    color: var(--profile-text-color);
+    margin-bottom: 30px;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 500;
+}
+
+/* User Information */
+.profile-user-info {
+    width: 100%;
+    max-width: 600px;
+    background-color: var(--profile-card-background);
+    padding: 20px;
+    border: 1px solid var(--profile-card-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px var(--profile-card-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.profile-picture {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 20px;
+    border: 2px solid var(--profile-primary-color);
+}
+
+.profile-details {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-details p {
+    font-size: 16px;
+    color: var(--profile-text-color);
+}
+
+.profile-password-toggle {
+    margin-left: 10px;
+    color: var(--profile-primary-color);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.profile-edit-button,
+.profile-logout-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s;
+    margin-top: 15px;
+}
+
+.profile-edit-button {
+    background-color: var(--profile-primary-color);
+    color: var(--profile-secondary-color);
+}
+
+.profile-edit-button:hover {
+    background-color: var(--profile-button-hover);
+    transform: translateY(-2px);
+}
+
+.profile-logout-button {
+    background-color: #dc3545; /* Bootstrap Danger Color */
+    color: #fff;
+    margin-top: 10px;
+}
+
+.profile-logout-button:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+}
+
+/* Edit Form */
+.profile-edit-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.profile-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.profile-form-group label {
+    font-size: 16px;
+    color: var(--profile-text-color);
+}
+
+.profile-form-group input[type="text"],
+.profile-form-group input[type="email"],
+.profile-form-group input[type="password"] {
+    padding: 10px 15px;
+    border: 1px solid var(--profile-input-border);
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.profile-form-group input[type="text"]:focus,
+.profile-form-group input[type="email"]:focus,
+.profile-form-group input[type="password"]:focus {
+    border-color: var(--profile-input-focus-border);
+}
+
+.profile-form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.profile-save-button,
+.profile-cancel-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.profile-form-group img.profile-picture-preview {
+    margin-top: 10px;
+    max-width: 150px;
+    border-radius: 50%;
+    border: 2px solid #ccc;
+}
+
+
+.profile-save-button {
+    background-color: var(--profile-primary-color);
+    color: var(--profile-secondary-color);
+}
+
+.profile-save-button:hover {
+    background-color: var(--profile-button-hover);
+    transform: translateY(-2px);
+}
+
+.profile-cancel-button {
+    background-color: #6c757d; /* Bootstrap Secondary Color */
+    color: #fff;
+}
+
+.profile-cancel-button:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+}
+
+/* Optional: Display User's Bookings, Cart Items, and Ratings */
+/* Add styling as needed */
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .profile-content-container {
+        padding: 20px;
+    }
+
+    .profile-heading {
+        font-size: 28px;
+    }
+
+    .profile-user-info {
+        padding: 15px;
+    }
+
+    .profile-picture {
+        width: 120px;
+        height: 120px;
+    }
+
+    .profile-edit-button,
+    .profile-logout-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+
+    .profile-form-group label {
+        font-size: 14px;
+    }
+
+    .profile-form-group input[type="text"],
+    .profile-form-group input[type="email"],
+    .profile-form-group input[type="password"] {
+        font-size: 14px;
+    }
+
+    .profile-save-button,
+    .profile-cancel-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-content-container {
+        padding: 15px;
+    }
+
+    .profile-heading {
+        font-size: 24px;
+    }
+
+    .profile-user-info {
+        padding: 10px;
+    }
+
+    .profile-picture {
+        width: 100px;
+        height: 100px;
+    }
+
+    .profile-edit-button,
+    .profile-logout-button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .profile-form-group label {
+        font-size: 12px;
+    }
+
+    .profile-form-group input[type="text"],
+    .profile-form-group input[type="email"],
+    .profile-form-group input[type="password"] {
+        font-size: 12px;
+    }
+
+    .profile-save-button,
+    .profile-cancel-button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}

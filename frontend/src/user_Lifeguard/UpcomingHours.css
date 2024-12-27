@@ -1,0 +1,63 @@
+.upcoming-hours-container {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upcoming-hours-heading {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.working-hours-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.working-hour-item {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.working-hour-info p {
+    margin: 5px 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.cancel-button {
+    background-color: #ff6b6b;
+    color: #ffffff;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.cancel-button:hover {
+    background-color: #ff4b4b;
+}
+
+.no-working-hours-message {
+    text-align: center;
+    font-size: 16px;
+    color: #666;
+}
+
+.upcoming-hours-container {
+    padding: 20px;
+    background-color: #f9f9f9;
+    flex: 1;
+    overflow-y: auto;
+}

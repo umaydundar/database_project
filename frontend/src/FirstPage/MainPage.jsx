@@ -1,21 +1,48 @@
-import React from "react";
+import axios from "axios";
 import "./MainPage.css";
 import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
 
 const Main = () => {
     const navigate = useNavigate();
+    const [username, setUsername] = useState(""); // State for username
+    const [password, setPassword] = useState(""); // State for password
 
     const handleRegisterClick = () => {
-        navigate("/register"); // Navigation to the register page
+        navigate("/register");
     };
 
     const handleChangePasswordClick = () => {
-        navigate("/change-password"); // Navigation to the change password page
+        navigate("/change-password");
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // Implement your login logic here
+
+        try {
+            const response = await axios.post("http://localhost:8000/api/login/", {
+                username,
+                password,
+            });
+
+            const userRole = response.data.user_role;
+            if (userRole === "non-member") {
+                navigate("/non-member/schedule");
+            } else if (userRole === "member") {
+                navigate("/member/schedule");
+            } else if (userRole === "coach") {
+                navigate("/coach/schedule");
+            } else if (userRole === "admin") {
+                navigate("/admin/report");
+            } else if (userRole === "lifeguard") {
+                navigate("/lifeguard/upcoming-hours");
+            } else {
+                navigate("/");
+            }
+        } catch (error) {
+            console.error("Login failed:", error);
+            alert("Login failed. Please check your username and password.");
+        }
     };
 
     return (
@@ -29,6 +56,8 @@ const Main = () => {
                             id="username"
                             className="input-field"
                             placeholder="Username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)} // Bind state
                             required
                         />
                     </div>
@@ -38,6 +67,8 @@ const Main = () => {
                             id="password"
                             className="input-field"
                             placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)} // Bind state
                             required
                         />
                     </div>
@@ -45,18 +76,18 @@ const Main = () => {
                         Login
                     </button>
                 </form>
-                <p className="register-text">
-                    Don't have an account?{" "}
-                    <span onClick={handleRegisterClick} className="register-link">
-                        Register
-                    </span>
-                </p>
                 <button
                     onClick={handleChangePasswordClick}
                     className="change-password-button"
                 >
                     Change Password
                 </button>
+                <p className="register-text">
+                    Don't have an account?{" "}
+                    <span onClick={handleRegisterClick} className="register-link">
+                        Register
+                    </span>
+                </p>
             </div>
         </div>
     );

@@ -8,8 +8,11 @@ const RegisterPage = () => {
 
     const handleRegisterClick = (e) => {
         e.preventDefault();
-        // Implement your registration logic here
-        alert(`Role selected: ${role}`); // Replace with your navigation logic
+        // Replace this alert with your registration logic
+        alert(`Role selected: ${role}`); 
+
+        // Navigate to the login page after registration
+        navigate("/");
     };
 
     return (

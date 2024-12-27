@@ -1,5 +1,6 @@
 CREATE TABLE all_users (
     user_id SERIAL PRIMARY KEY,
+    user_image BYTEA,
     forename VARCHAR(255),
     surname VARCHAR(255),
     username VARCHAR(255),
@@ -13,7 +14,7 @@ CREATE TABLE swimming_pool(
     opening_hour TIME NOT NULL,
     closing_hour TIME NOT NULL,
     working_days VARCHAR(255) NOT NULL
-);
+); search in aerobic tips massage Book book
 
 CREATE TABLE worker (
     worker_id SERIAL PRIMARY KEY,
@@ -99,7 +100,6 @@ CREATE TABLE report (
 CREATE TABLE course(
     course_id SERIAL PRIMARY KEY,
     course_name VARCHAR(255) NOT NULL,
-    course_image BYTEA,
     coach_id INT NOT NULL,
     course_description TEXT,
     restrictions VARCHAR(255),

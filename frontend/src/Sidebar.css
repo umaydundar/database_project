@@ -14,8 +14,7 @@
   top: 0;
   left: 0;
   height: 100%;
-  width: 220px;
-  padding: 20px 0;
+  width: 260px;
   background-color: #F2F4F7;
   box-shadow: 0 5px 5px rgba(0, 0, 0, 0.1);
   transition: all 0.4s ease;
@@ -30,13 +29,13 @@
 
 .logo .icon {
   color: #333;
-  font-size: 24px;
+  font-size: 18px;
   margin-right: 14px;
 }
 
 .logo .logo-name {
   color: #333;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600; /* Slightly bolder for prominence */
 }
 
@@ -45,7 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 24px 30px 24px; /* Align with logo */
+  margin: 0 24px 14px 14px; /* Align with logo */
   padding: 10px 12px;
   background-color: #ffffff;
   border: 1px solid #ddd;

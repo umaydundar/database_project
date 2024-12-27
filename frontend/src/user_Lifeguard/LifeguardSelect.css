@@ -1,0 +1,77 @@
+.lifeguards-main-container {
+    display: flex;
+    height: 100vh; /* Full viewport height */
+    background-color: #f0f2f5; /* Match the sidebar background */
+}
+
+.lifeguards-bottom-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.lifeguards-content-container {
+    flex: 1;
+    padding: 30px 40px;
+    background-color: #ffffff;
+    overflow-y: auto;
+}
+
+.lifeguards-heading {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.lifeguards-section {
+    margin-bottom: 20px;
+}
+
+.lifeguards-facility-buttons,
+.lifeguards-time-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.lifeguards-facility-button,
+.lifeguards-time-slot {
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #e0e0e0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.lifeguards-facility-button.active,
+.lifeguards-time-slot.selected {
+    background-color: #007bff;
+    color: white;
+}
+
+.lifeguards-time-slot.occupied {
+    background-color: gray;
+    color: white;
+    cursor: not-allowed;
+}
+
+.lifeguards-time-slot:hover:not(.occupied) {
+    background-color: lightblue;
+}
+
+.lifeguards-save-button {
+    padding: 10px 20px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.lifeguards-save-button:hover {
+    background-color: #0056b3;
+}

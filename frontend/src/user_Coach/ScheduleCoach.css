@@ -1,0 +1,78 @@
+.schedule-main-container {
+display: flex;
+height: 100vh;
+}
+
+.schedule-content-container {
+flex: 1;
+padding: 30px 40px;
+background-color: #f0f2f5;
+overflow-y: auto;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+
+.schedule-heading {
+font-size: 32px;
+font-weight: 500;
+margin-bottom: 20px;
+}
+
+.schedule-coach-content {
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #f0f2f5;
+}
+
+.view-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.view-btn {
+    padding: 10px 20px;
+    border: none;
+    background: #e0e0e0;
+    cursor: pointer;
+}
+
+.view-btn:hover {
+background-color: #0056b3;
+color: #fff;
+}
+
+.view-btn.active {
+    background: #007bff;
+    color: #fff;
+}
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.schedule-card {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-card h2 {
+font-size: 20px;
+color: #333;
+margin-bottom: 10px;
+}
+
+.schedule-card ul {
+list-style: none;
+padding-left: 0;
+}
+
+.schedule-card li {
+font-size: 16px;
+color: #555;
+}
