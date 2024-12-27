@@ -11,6 +11,10 @@ import BookPoolLane from "./BookPoolLane";
 import Profile from "./Profile";
 import MyCart from "./MyCart";
 import ChangePassword from "./FirstPage/ChangePassword";
+import UpcomingBookings from "./UpcomingBookings";
+import Membership from "./Membership";
+import Cafe from "./Cafe";
+import CreateCourse from "./CreateCourse";
 
 function App() {
 
@@ -27,6 +31,10 @@ function App() {
                 <Route path="/book-pool-lane" element={<BookPoolLane />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/my-cart" element={<MyCart/>} />
+                <Route path="/upcoming-bookings" element={<UpcomingBookings />} />
+                <Route path="/membership" element={<Membership />} />
+                <Route path="/cafe" element={<Cafe />} />
+                <Route path="create-course" element={<CreateCourse />} />
             </Routes>
         </Router>
     );

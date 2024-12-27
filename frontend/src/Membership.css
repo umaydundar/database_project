@@ -1,0 +1,199 @@
+/* Membership.css */
+
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+    --membership-primary-color: #4a90e2;
+    --membership-secondary-color: #ffffff;
+    --membership-background: #f0f2f5;
+    --membership-card-background: #ffffff;
+    --membership-card-border: #ddd;
+    --membership-card-shadow: rgba(0, 0, 0, 0.1);
+    --membership-text-color: #333333;
+    --membership-error-color: #dc3545;
+    --membership-success-color: #28a745;
+    --membership-button-hover: #357ABD;
+    --membership-button-active: #2a6496;
+    --membership-input-border: #ccc;
+    --membership-input-focus-border: #4a90e2;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body, html, #root {
+    height: 100%;
+    width: 100%;
+}
+
+.membership-main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: var(--membership-background);
+}
+
+.membership-bottom-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.membership-content-container {
+    flex: 1;
+    padding: 30px 40px;
+    background-color: var(--membership-background);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.membership-heading {
+    text-align: center;
+    color: var(--membership-text-color);
+    margin-bottom: 20px;
+    font-size: 32px;
+    font-weight: 500;
+}
+
+.membership-form {
+    background-color: var(--membership-card-background);
+    padding: 30px;
+    border: 1px solid var(--membership-card-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px var(--membership-card-shadow);
+    width: 100%;
+    max-width: 600px;
+}
+
+.membership-form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.membership-form-group label {
+    margin-bottom: 5px;
+    color: var(--membership-text-color);
+    font-weight: 500;
+}
+
+.membership-form-group input,
+.membership-form-group textarea,
+.membership-form-group select {
+    padding: 10px 15px;
+    border: 1px solid var(--membership-input-border);
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.membership-form-group input:focus,
+.membership-form-group textarea:focus,
+.membership-form-group select:focus {
+    border-color: var(--membership-input-focus-border);
+}
+
+.required {
+    color: var(--membership-error-color);
+    margin-left: 2px;
+}
+
+.membership-message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.membership-message.success {
+    background-color: #d4edda;
+    color: var(--membership-success-color);
+    border: 1px solid #c3e6cb;
+}
+
+.membership-message.error {
+    background-color: #f8d7da;
+    color: var(--membership-error-color);
+    border: 1px solid #f5c6cb;
+}
+
+.membership-submit-button {
+    width: 100%;
+    padding: 12px 20px;
+    background-color: var(--membership-primary-color);
+    color: var(--membership-secondary-color);
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s;
+    font-weight: 500;
+}
+
+.membership-submit-button:hover {
+    background-color: var(--membership-button-hover);
+    transform: translateY(-2px);
+}
+
+.membership-submit-button:active {
+    background-color: var(--membership-button-active);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .membership-content-container {
+        padding: 20px 30px;
+    }
+
+    .membership-heading {
+        font-size: 28px;
+    }
+
+    .membership-form {
+        padding: 20px;
+    }
+
+    .membership-form-group input,
+    .membership-form-group textarea,
+    .membership-form-group select {
+        font-size: 14px;
+    }
+
+    .membership-submit-button {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .membership-content-container {
+        padding: 15px 20px;
+    }
+
+    .membership-heading {
+        font-size: 24px;
+    }
+
+    .membership-form {
+        padding: 15px;
+    }
+
+    .membership-form-group input,
+    .membership-form-group textarea,
+    .membership-form-group select {
+        font-size: 12px;
+    }
+
+    .membership-submit-button {
+        font-size: 12px;
+        padding: 10px 18px;
+    }
+}

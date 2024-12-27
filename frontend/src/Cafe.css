@@ -1,0 +1,255 @@
+/* Cafe.css */
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
+
+/* Scoped reset for the Cafe page only */
+.cafe-main-container{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+}
+
+.cafe-main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f0f2f5;
+}
+
+.cafe-bottom-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.cafe-content-container {
+    flex: 1;
+    padding: 30px 40px;
+    background-color: #f0f2f5;
+    overflow-y: auto;
+}
+
+.cafe-heading {
+    text-align: center;
+    color: #333333;
+    margin-bottom: 20px;
+    font-size: 32px;
+    font-weight: 500;
+}
+
+.cafe-purchase-confirmation {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cafe-points-balance {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 18px;
+    color: #333333;
+}
+
+.cafe-section {
+    margin-bottom: 40px;
+}
+
+.cafe-section h2 {
+    color: #333333;
+    margin-bottom: 15px;
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.cafe-items-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.cafe-item-card {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    width: calc(33.333% - 20px);
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.cafe-item-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.cafe-item-card h3 {
+    margin-bottom: 8px;
+    color: #333333;
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.cafe-item-card p {
+    margin-bottom: 10px;
+    color: #555555;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.cafe-add-button {
+    padding: 8px 16px;
+    background-color: #4a90e2;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.cafe-add-button:hover {
+    background-color: #357ABD;
+    transform: translateY(-2px);
+}
+
+.cafe-add-button:active {
+    background-color: #2a6496;
+}
+
+.cafe-cart-section {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: #1a1a1a;
+}
+
+.cafe-cart-section h2 {
+    margin-bottom: 15px;
+    color: #333333;
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.cafe-cart-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cafe-cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.cafe-remove-button {
+    background-color: #dc3545;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.cafe-remove-button:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+}
+
+.cafe-remove-button:active {
+    background-color: #bd2130;
+}
+
+.cafe-cart-total {
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: right;
+}
+
+.cafe-purchase-button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 10px 0;
+    background-color: #28a745;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.cafe-purchase-button:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
+}
+
+.cafe-purchase-button:active {
+    background-color: #1e7e34;
+}
+
+/* Responsive Design */
+
+@media (max-width: 992px) {
+    .cafe-item-card {
+        width: calc(50% - 20px);
+    }
+}
+
+@media (max-width: 600px) {
+    .cafe-item-card {
+        width: 100%;
+    }
+
+    .cafe-points-balance {
+        font-size: 16px;
+    }
+
+    .cafe-heading {
+        font-size: 28px;
+    }
+
+    .cafe-section h2 {
+        font-size: 20px;
+    }
+
+    .cafe-cart-section h2 {
+        font-size: 20px;
+    }
+
+    .cafe-add-button,
+    .cafe-remove-button,
+    .cafe-purchase-button {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    .cafe-item-card h3 {
+        font-size: 18px;
+    }
+
+    .cafe-item-card p {
+        font-size: 14px;
+    }
+
+    .cafe-cart-total {
+        font-size: 16px;
+    }
+}

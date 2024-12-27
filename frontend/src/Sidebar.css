@@ -1,3 +1,5 @@
+/* Sidebar.css */
+
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
 
 /* Scoped reset for the sidebar only */
@@ -20,13 +22,13 @@
   z-index: 999; /* Overlay above other elements */
 }
 
-.sidebar .logo {
+.logo {
   display: flex;
   align-items: center;
-  margin: 0 24px;
+  margin: 0 24px 30px 24px; /* Added bottom margin for spacing */
 }
 
-.logo .menu-icon {
+.logo .icon {
   color: #333;
   font-size: 24px;
   margin-right: 14px;
@@ -35,62 +37,225 @@
 .logo .logo-name {
   color: #333;
   font-size: 22px;
+  font-weight: 600; /* Slightly bolder for prominence */
+}
+
+/* Balance View Styles */
+.balance-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 24px 30px 24px; /* Align with logo */
+  padding: 10px 12px;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.balance-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.balance-label {
+  font-size: 16px;
+  color: #333333;
   font-weight: 500;
 }
 
-.sidebar .sidebar-content {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 30px 16px;
+.balance-amount {
+  font-size: 16px;
+  color: #333333;
+  font-weight: 500;
 }
 
-.sidebar-content .list {
+.add-money-button {
+  background: none;
+  border: none;
+  color: #4a90e2;
+  cursor: pointer;
+  font-size: 20px;
+  transition: color 0.3s ease, transform 0.2s;
+}
+
+.add-money-button:hover {
+  color: #357ABD;
+  transform: scale(1.1);
+}
+
+.add-money-button:active {
+  color: #2a6496;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Above the sidebar */
+}
+
+.modal-content {
+  background-color: #ffffff;
+  padding: 30px 40px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px; /* Increased max-width for more space */
+  position: relative;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content h2 {
+  margin-bottom: 20px;
+  color: #333333;
+  text-align: center;
+  font-size: 24px;
+}
+
+.add-money-form .form-group {
+  margin-bottom: 15px;
+}
+
+.add-money-form .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #333333;
+  font-weight: 500;
+}
+
+.add-money-form .form-group .required {
+  color: #dc3545;
+}
+
+.add-money-form .form-group input,
+.add-money-form .form-group select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.add-money-form .form-group input:focus,
+.add-money-form .form-group select:focus {
+  border-color: #4a90e2;
+  outline: none;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.success-message {
+  color: #28a745;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.submit-button {
+  background-color: #28a745;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.submit-button:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.submit-button:active {
+  background-color: #1e7e34;
+}
+
+.cancel-button {
+  background-color: #dc3545;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.cancel-button:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+}
+
+.cancel-button:active {
+  background-color: #bd2130;
+}
+
+.sidebar-content .lists {
   list-style: none;
 }
 
-.list .nav-link {
+.lists .list {
+  list-style: none;
+}
+
+.lists .list .nav-link {
   display: flex;
   align-items: center;
   margin: 8px 0;
   padding: 14px 12px;
   border-radius: 8px;
   text-decoration: none;
+  color: #707070; /* Ensures text color consistency */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.lists .nav-link:hover {
+.lists .list.active .nav-link,
+.lists .list .nav-link:hover {
   background-color: #4070f4;
+  color: #ffffff;
 }
 
-.nav-link .icon {
+.lists .list .nav-link .icon {
   margin-right: 14px;
   font-size: 20px;
-  color: #707070;
+  color: #707070; /* Icon color consistency */
+  transition: color 0.3s ease;
 }
 
-.nav-link .link {
+.lists .list.active .nav-link .icon,
+.lists .list .nav-link:hover .icon {
+  color: #ffffff;
+}
+
+.lists .list .nav-link .link {
   font-size: 16px;
-  color: #707070;
   font-weight: 400;
 }
 
-.lists .nav-link:hover .icon,
-.lists .nav-link:hover .link {
-  color: #fff;
-}
-
-.profile-photo {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%; /* Makes the image circular */
-  margin-right: 14px;
-  object-fit: cover; /* Ensures the image is properly contained */
-  border: 2px solid #4070f4; /* Optional: Add a border around the image */
-}
-
-/* Remove border and background from buttons styled as links */
-.sidebar .bottom-content .list button {
+/* Logout Button Styles */
+.bottom-content .list button {
   all: unset; /* Reset all button styles */
   display: flex; /* Align content like a link */
   align-items: center;
@@ -100,9 +265,124 @@
   color: inherit; /* Inherit color from parent */
   text-decoration: none;
   gap: 10px; /* Add space between icon and text */
+  color: #707070;
 }
 
-/* Ensure hover effect matches other links */
-.sidebar .bottom-content .list button:hover {
-  color: #E20118; /* Optional: Match hover color */
+.bottom-content .list button .icon {
+  color: #707070; /* Default icon color */
+  transition: color 0.3s ease;
+}
+
+.bottom-content .list button:hover,
+.bottom-content .list button:focus {
+  color: #4070f4;
+}
+
+.bottom-content .list button:hover .icon,
+.bottom-content .list button:focus .icon {
+  color: #ffffff;
+}
+
+/* Responsive Design Adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 180px;
+  }
+
+  .logo .logo-name {
+    font-size: 20px;
+  }
+
+  .balance-view {
+    margin: 0 16px 25px 16px;
+    padding: 8px 10px;
+  }
+
+  .balance-label,
+  .balance-amount {
+    font-size: 14px;
+  }
+
+  .add-money-button {
+    font-size: 18px;
+  }
+
+  /* Modal Adjustments for Smaller Screens */
+  .modal-content {
+    padding: 20px 25px;
+  }
+
+  .modal-content h2 {
+    font-size: 20px;
+  }
+
+  .add-money-form .form-group input,
+  .add-money-form .form-group select {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .submit-button,
+  .cancel-button {
+    font-size: 12px;
+    padding: 8px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 160px;
+  }
+
+  .logo .logo-name {
+    font-size: 18px;
+  }
+
+  .balance-view {
+    margin: 0 12px 20px 12px;
+    padding: 6px 8px;
+  }
+
+  .balance-label,
+  .balance-amount {
+    font-size: 12px;
+  }
+
+  .add-money-button {
+    font-size: 16px;
+  }
+
+  .lists .list .nav-link {
+    padding: 10px 8px;
+  }
+
+  .lists .list .nav-link .icon {
+    font-size: 16px;
+    margin-right: 8px;
+  }
+
+  .lists .list .nav-link .link {
+    font-size: 12px;
+  }
+
+  /* Modal Adjustments for Very Small Screens */
+  .modal-content {
+    padding: 15px 20px;
+  }
+
+  .modal-content h2 {
+    font-size: 18px;
+  }
+
+  .add-money-form .form-group input,
+  .add-money-form .form-group select {
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+
+  .submit-button,
+  .cancel-button {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
 }

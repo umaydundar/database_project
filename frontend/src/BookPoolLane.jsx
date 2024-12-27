@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// BookPoolLane.jsx
+import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar.jsx';
 import './BookPoolLane.css';
 
@@ -22,6 +23,26 @@ const BookPoolLane = () => {
         '08:00 PM - 09:00 PM',
     ];
 
+    // Initialize bookings from localStorage or as an empty array
+    const [bookings, setBookings] = useState(() => {
+        const savedBookings = localStorage.getItem('bookpoollane-bookings');
+        return savedBookings ? JSON.parse(savedBookings) : [];
+    });
+
+    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedLane, setSelectedLane] = useState('');
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
+    const [confirmation, setConfirmation] = useState(null);
+    const [availableLanes, setAvailableLanes] = useState([]);
+    const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+    const [errorMessage, setErrorMessage] = useState('');
+
+    // Synchronize bookings with localStorage whenever bookings change
+    useEffect(() => {
+        localStorage.setItem('bookpoollane-bookings', JSON.stringify(bookings));
+    }, [bookings]);
+
+    // Mock availability data
     const availabilityData = {
         '2024-12-05': {
             1: ['06:00 AM - 07:00 AM', '07:00 AM - 08:00 AM'],
@@ -46,15 +67,6 @@ const BookPoolLane = () => {
         },
     };
 
-    const [selectedDate, setSelectedDate] = useState('');
-    const [selectedLane, setSelectedLane] = useState('');
-    const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
-    const [bookings, setBookings] = useState([]);
-    const [confirmation, setConfirmation] = useState(null);
-    const [availableLanes, setAvailableLanes] = useState([]);
-    const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
-    const [errorMessage, setErrorMessage] = useState('');
-
     const handleDateChange = (e) => {
         const date = e.target.value;
         setSelectedDate(date);
@@ -76,11 +88,20 @@ const BookPoolLane = () => {
             (lane) => availabilityData[date][lane].length > 0
         );
 
-        if (availableLanesForDate.length === 0) {
+        // Additionally, remove lanes already booked for the selected date
+        const bookedLanes = bookings
+            .filter((booking) => booking.date === date)
+            .map((booking) => booking.lane.toString());
+
+        const finalAvailableLanes = availableLanesForDate.filter(
+            (lane) => !bookedLanes.includes(lane)
+        );
+
+        if (finalAvailableLanes.length === 0) {
             showError('All lanes are fully booked for this date. Please select another day.');
             setSelectedDate('');
         } else {
-            setAvailableLanes(availableLanesForDate);
+            setAvailableLanes(finalAvailableLanes);
             setSelectedLane('');
             setSelectedTimeSlot('');
             setAvailableTimeSlots([]);
@@ -93,7 +114,16 @@ const BookPoolLane = () => {
 
         if (selectedDate && lane) {
             const slots = availabilityData[selectedDate]?.[lane] || [];
-            setAvailableTimeSlots(slots);
+            // Additionally, remove time slots already booked for this lane and date
+            const bookedSlots = bookings
+                .filter((booking) => booking.date === selectedDate && booking.lane === lane)
+                .map((booking) => booking.timeSlot);
+
+            const finalAvailableSlots = slots.filter(
+                (slot) => !bookedSlots.includes(slot)
+            );
+
+            setAvailableTimeSlots(finalAvailableSlots);
         }
     };
 
@@ -147,7 +177,7 @@ const BookPoolLane = () => {
                                 required
                             />
                         </div>
-                        {errorMessage && <p className="error-message">{errorMessage}</p>}
+                        {errorMessage && <p className="bookpoollane-error-message">{errorMessage}</p>}
 
                         <div className="bookpoollane-form-group">
                             <label htmlFor="lane">Select Lane:</label>
@@ -174,7 +204,7 @@ const BookPoolLane = () => {
                                 value={selectedTimeSlot}
                                 onChange={(e) => setSelectedTimeSlot(e.target.value)}
                                 required
-                                disabled={!selectedLane}
+                                disabled={!selectedLane || availableTimeSlots.length === 0}
                             >
                                 <option value="">--Select Time Slot--</option>
                                 {availableTimeSlots.map((slot, index) => (
@@ -200,34 +230,11 @@ const BookPoolLane = () => {
                                 <strong>Time Slot:</strong> {confirmation.timeSlot}
                             </p>
                             <p>
-                                <strong>Lane:</strong> {confirmation.lane}
+                                <strong>Lane:</strong> Lane {confirmation.lane}
                             </p>
                         </div>
                     )}
 
-                    {bookings.length > 0 && (
-                        <div className="bookpoollane-bookings-list">
-                            <h2>Upcoming Bookings</h2>
-                            <table className="bookpoollane-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Time Slot</th>
-                                        <th>Lane</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {bookings.map((booking) => (
-                                        <tr key={booking.id}>
-                                            <td>{booking.date}</td>
-                                            <td>{booking.timeSlot}</td>
-                                            <td>Lane {booking.lane}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
