@@ -1,5 +1,6 @@
 CREATE TABLE all_users (
     user_id SERIAL PRIMARY KEY,
+    course_image BYTEA,
     forename VARCHAR(255),
     surname VARCHAR(255),
     username VARCHAR(255),
