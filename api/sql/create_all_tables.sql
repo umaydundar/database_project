@@ -1,11 +1,12 @@
 CREATE TABLE all_users (
     user_id SERIAL PRIMARY KEY,
-    course_image BYTEA,
+    user_image BYTEA,
     forename VARCHAR(255),
     surname VARCHAR(255),
     username VARCHAR(255),
     password VARCHAR(255),
-    account_money BIGINT
+    account_money BIGINT,
+    user_type VARCHAR(255)
 );
 
 CREATE TABLE swimming_pool(
@@ -13,7 +14,8 @@ CREATE TABLE swimming_pool(
     number_of_lanes INT NOT NULL,
     opening_hour TIME NOT NULL,
     closing_hour TIME NOT NULL,
-    working_days TEXT NOT NULL
+    working_days TEXT NOT NULL,
+    location TEXT,
 );
 
 CREATE TABLE worker (
@@ -56,9 +58,11 @@ CREATE TABLE lane(
     lifeguard_id INT,
     start_time DATETIME,
     end_time DATETIME,
+    availability VARCHAR(255)
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
     FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),
-    PRIMARY KEY (lane_id, pool_id)
+    PRIMARY KEY (lane_id, pool_id),
+    check(availability in ("available", "added-to-cart", "in-use"))
 );
 
 CREATE TABLE swimmer (
@@ -70,6 +74,7 @@ CREATE TABLE swimmer (
     number_of_booked_slots INT,
     total_courses_enrolled INT,
     total_courses_terminated INT,
+    membership_status VARCHAR(255),
     FOREIGN KEY (swimmer_id) REFERENCES all_users(user_id)
 );
 
@@ -125,10 +130,12 @@ CREATE TABLE course_schedule(
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     day VARCHAR(255),
+    status VARCHAR(255),
     FOREIGN KEY (swimmer_id) REFERENCES swimmer(swimmer_id),
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id),
     FOREIGN KEY (course_id) REFERENCES course(course_id),
-    PRIMARY KEY (course_schedule_id, course_id)
+    PRIMARY KEY (course_schedule_id, course_id),
+    check(status in ('not-enrolled', 'in-progress', 'withdrawn', 'finished', 'cancelled'))
 );
 
 CREATE TABLE personal_training(
@@ -157,8 +164,10 @@ CREATE TABLE cafe_item(
     cafe_item_id SERIAL,
     cafe_id INT NOT NULL,
     item_image BYTEA,
+    item_name VARCHAR(255),
     item_description VARCHAR(255),
     item_count INT,
+    price INT,
     FOREIGN KEY (cafe_id) REFERENCES cafe(cafe_id),
     PRIMARY KEY (cafe_item_id, cafe_id)
 );
@@ -195,11 +204,14 @@ CREATE TABLE cart(
     course_id INT,
     cafe_item_id INT,
     cafe_id INT,
+    lane_id INT,
     FOREIGN KEY (purchaser_id) REFERENCES swimmer(swimmer_id),
     FOREIGN KEY (course_id) REFERENCES course(course_id),
     FOREIGN KEY (cafe_item_id) REFERENCES cafe_item(cafe_item_id),
-    FOREIGN KEY (cafe_id) REFERENCES cafe(cafe_id)
+    FOREIGN KEY (cafe_id) REFERENCES cafe(cafe_id),
+    FOREIGN KEY (lane_id) REFERENCES lane(lane_id)
 );
+
 CREATE TABLE private_booking (
     private_booking_id SERIAL,
     swimmer_id INT,
