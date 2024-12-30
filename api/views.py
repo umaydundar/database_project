@@ -1,7 +1,9 @@
+import datetime
 import json
 from django.http import JsonResponse
 from django.views import View
 from django.db import connection
+from django.core.mail import send_mail
  
 class LoginView(View):
     class LoginView(View):
@@ -331,26 +333,46 @@ class EnrollCourseView(View):
         course_id = data.get("course_id")
         
         with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM course_schedule where course_id=%s", [course_id])
+            course = cursor.fetchone()
+            
+            coach_id = course[3]
+            start_day = course[4]
+            end_day = course[5]
+            start_time = course[6]
+            end_time = course[7]
+            day = course[8]
+            
             cursor.execute("SELECT * FROM course where course_id=%s", [course_id])
             course = cursor.fetchone()
             
-        coach_id = course[3]
-        start_day = course[4]
-        end_day = course[5]
-        start_time = course[6]
-        end_time = course[7]
-        day = course[8]
+            price = course[9]
+        
+            cursor.execute("SELECT account_money FROM all_users WHERE user_id=%s", [swimmer_id])
+            account_money = cursor.fetchone()
+            
+            if not account_money or account_money[0] < price:
+                return JsonResponse({"error": "Insufficient money"}, status=400)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM cart WHERE purchaser_id = %s AND course_id = %s",
+                [swimmer_id, course_id],
+            )  
+        
+            cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [price, swimmer_id])
+            
+            
         with connection.cursor() as cursor:
             cursor.execute(
                 "INSERT INTO course_schedule (course_id, swimmer_id, coach_id, start_date, end_date, start_time, end_time, day, status) VALUES (%s, %s)",
                 [course_id, swimmer_id, coach_id, start_day, end_day, start_time, end_time, day, "in-progress"]
             )
             
-        with connection.cursor() as cursor:
             cursor.execute(
-                "DELETE FROM cart WHERE purchaser_id = %s AND course_id = %s",
-                [swimmer_id, course_id],
-            )   
+                "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                [swimmer_id, course_id, 0, 0, 0, datetime.now],
+            )  
         
         return JsonResponse({"message": "Successfully enrolled in the course"}, status=201)
     
@@ -509,6 +531,22 @@ class BookLaneView(View):
             cursor.execute(
                 "UPDATE lane SET availability=%s WHERE lane_id=%s",
                 ["in-use", lane_id]
+            )
+            
+            cursor.execute(
+                "DELETE FROM cart WHERE purchaser_id = %s AND lane_id = %s",
+                [swimmer_id, lane_id],
+            )
+            
+            cursor.execute("SELECT * FROM lane HERE lane_id=%s", [lane_id])
+            lane = cursor.fetchone()
+            booking_price = lane[6]
+            
+            cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [booking_price, swimmer_id])
+            
+            cursor.execute(
+                "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                [swimmer_id, 0, 0, 0, lane_id, datetime.now],
             )
             
         return JsonResponse({"message": "Lane booked successfully"})
@@ -970,8 +1008,6 @@ class BecomeMemberView(View):
         request.session.flush() 
         return JsonResponse({"message": "User has become a member successfully"}, status=200)
 
-
-
 class CancelMembershipView(View):
     def post(self, request):
         data = json.loads(request.body)
@@ -986,31 +1022,37 @@ class CancelMembershipView(View):
         request.session.flush() 
         return JsonResponse({"message": "Membership canceled successfully"}, status=200)
 
-#todo
 class DailyCoursesCoachView(View):
     def get(self, request):
         coach_id = request.GET.get('coach_id')
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course_schedule WHERE coach_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND day=CURRENT_DATE.day", [coach_id])
+            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT * FROM course_schedule WHERE coach_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND EXTRACT(DOW FROM CURRENT_DATE) = day AND status='in-progress')", [coach_id])
             courses = cursor.fetchall()
-
-        course_data = [
-            {
-                "course_id": course[0],
-                "course_name": course[1],
-                "description": course[2],
-            }
-            for course in courses
-        ]
+            
+        course_data = []
+        for course in courses:    
+            course = {
+                        "course_id": course[0],
+                        "course_name": course[1],
+                        "course_image": course[2],
+                        "coach_id": course[3],
+                        "course_description": course[4],
+                        "restrictions": course[5],
+                        "deadline": course[6],
+                        "pool_id": course[7],
+                        "lane_id": course[8],
+                        "price": course[9]
+                    }
+            course_data.append(course)
+            
         return JsonResponse({"daily_courses": course_data})
 
-#todo
 class DailyCoursesMemberView(View):
     def get(self, request):
         member_id = request.GET.get('member_id')
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE member_id = %s) AND DATE(schedule) = CURRENT_DATE",
+                  cursor.execute("SELECT * FROM course WHERE  course_id IN (SELECT * FROM course_schedule WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE  AND EXTRACT(DOW FROM CURRENT_DATE)= day AND status='in-progress'", [member_id])
                 [member_id],
             )
             courses = cursor.fetchall()
@@ -1019,40 +1061,85 @@ class DailyCoursesMemberView(View):
             {
                 "course_id": course[0],
                 "course_name": course[1],
-                "description": course[2],
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9]
             }
             for course in courses
         ]
         return JsonResponse({"daily_courses": course_data})
-#todo
+    
 class WeeklyCoursesCoachView(View):
     def get(self, request):
         coach_id = request.GET.get('coach_id')
+        today = datetime.today()
+        start_of_week = today - datetime.timedelta(days=today.weekday()) 
+        end_of_week = start_of_week + datetime.timedelta(days=6) 
+        
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT * FROM course WHERE coach_id = %s AND schedule >= CURRENT_DATE AND schedule < CURRENT_DATE + INTERVAL '7 days'",
-                [coach_id],
-            )
+            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE coach_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND day BETWEEN %s AND %s AND status='in-progress)", 
+                           [coach_id, start_of_week.date(), end_of_week.date()])
             courses = cursor.fetchall()
 
         course_data = [
             {
                 "course_id": course[0],
                 "course_name": course[1],
-                "description": course[2],
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9]
             }
             for course in courses
         ]
         return JsonResponse({"weekly_courses": course_data})
-
-#todo
+    
 class WeeklyCoursesMemberView(View):
     def get(self, request):
         member_id = request.GET.get('member_id')
+        today = datetime.today()
+        start_of_week = today - datetime.timedelta(days=today.weekday()) 
+        end_of_week = start_of_week + datetime.timedelta(days=6) 
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND day BETWEEN %s AND %s AND status='in-progress)", 
+                           [member_id, start_of_week.date(), end_of_week.date()])
+            courses = cursor.fetchall()
+
+        course_data = []
+        for course in courses:
+            course= {
+                "course_id": course[0],
+                "course_name": course[1],
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9]
+                }
+            course_data.append(course)
+           
+        return JsonResponse({"weekly_courses": course_data})
+
+class DailyCoursesNonmemberView(View):
+    def get(self, request):
+        swimmer_id = request.GET.get('nonmember_id')
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE member_id = %s) AND schedule >= CURRENT_DATE AND schedule < CURRENT_DATE + INTERVAL '7 days'",
-                [member_id],
+                  cursor.execute("SELECT * FROM course_schedule JOIN course ON coach_id WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE  AND EXTRACT(DOW FROM CURRENT_DATE) = day", [member_id])
+                [swimmer_id],
             )
             courses = cursor.fetchall()
 
@@ -1060,60 +1147,48 @@ class WeeklyCoursesMemberView(View):
             {
                 "course_id": course[0],
                 "course_name": course[1],
-                "description": course[2],
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9]
             }
             for course in courses
         ]
-        return JsonResponse({"weekly_courses": course_data})
-
-#todo
-class DailyCoursesNonmemberView(View):
-    def get(self, request):
-        swimmer_id = request.GET("swimmer_id")
-        with connection.cursor() as cursor:
-            cursor.execute(cursor.execute("SELECT * FROM course_schedule WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND EXTRACT(DOW FROM CURRENT_DATE) = day", [swimmer_id]))
-            courses = cursor.fetchall()
-        
-        course_data = [
-            {
-                "course_id": course[0],
-                "course_name": course[1],
-                "coach_id": course[2],
-                "course_description": course[3],
-                "restrictions": course[4],
-                "deadline": course[5],
-                "pool_id": course[6],
-                "lane_id": course[7],
-                "price": course[8]
-            } for course in courses
-        ]
         return JsonResponse({"daily_courses": course_data})
 
-#todo
 class WeeklyCoursesNonmemberView(View):
-    def get(self, request):
-        swimmer_id = request.GET.get('swimmer_id')
+   def get(self, request):
+        nonmember_id = request.GET.get('nonmember_id')
+        today = datetime.today()
+        start_of_week = today - datetime.timedelta(days=today.weekday()) 
+        end_of_week = start_of_week + datetime.timedelta(days=6) 
+
         with connection.cursor() as cursor:
-            cursor.execute(
-               cursor.execute("SELECT * FROM course_schedule WHERE coach_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE",
-                              [swimmer_id]))
+            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND day BETWEEN %s AND %s AND status='in-progress)", 
+                           [nonmember_id, start_of_week.date(), end_of_week.date()])
             courses = cursor.fetchall()
-        
-        course_data = [
-            {
+
+        course_data = []
+        for course in courses:
+            course= {
                 "course_id": course[0],
                 "course_name": course[1],
-                "coach_id": course[2],
-                "course_description": course[3],
-                "restrictions": course[4],
-                "deadline": course[5],
-                "pool_id": course[6],
-                "lane_id": course[7],
-                "price": course[8]
-            } for course in courses
-        ]
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9]
+                }
+            course_data.append(course)
+           
         return JsonResponse({"weekly_courses": course_data})
-
 
 class CafeItemsView(View):
     def get(self, request):
@@ -1314,11 +1389,12 @@ class AddCafeItemToCartView(View):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
         cafe_item_id = data.get("cafe_item_id")
+        cafe_id = data.get("cafe_id")
         
         with connection.cursor() as cursor:
             cursor.execute(
-                "INSERT INTO cart (purchaser_id, cafe_item_id) VALUES (%s, %s)",
-                [purchaser_id, cafe_item_id],
+                "INSERT INTO cart (purchaser_id, course_id, cafe_item_id, cafe_id, lane_id) VALUES (%s, %s, %s, %s, %s)",
+                [purchaser_id, 0, cafe_item_id, cafe_id, 0],
             )
 
         return JsonResponse({"message": "Item added to cart successfully"})
@@ -1345,7 +1421,7 @@ class RemoveCafeItemFromCartView(View):
 
         return JsonResponse({"message": "Item removed from cart successfully"})
        
-class ButCafeItemView(View):
+class BuyCafeItemView(View):
     def post(self, request):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
@@ -1353,10 +1429,12 @@ class ButCafeItemView(View):
         
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT SUM(price) cafe_item WHERE cafe_item_id IN (SELECT * FROM cart WHERE purchaser_id=%s AND cafe_item_id=%s)",
+                "SELECT SUM(price), cafe_id cafe_item WHERE cafe_item_id IN (SELECT * FROM cart WHERE purchaser_id=%s AND cafe_item_id=%s)",
                 [purchaser_id, item_id],
             )
-            price = cursor.fetchone()[0]
+            item = cursor.fetchone()
+            price = item[0]
+            cafe_id = item[1]
             
             cursor.execute("SELECT account_money FROM all_users WHERE user_id=%s", [purchaser_id])
             account_money = cursor.fetchone()
@@ -1370,6 +1448,11 @@ class ButCafeItemView(View):
             )
             
             cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [price, purchaser_id])
+            
+            cursor.execute(
+                "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                [purchaser_id, 0, item_id, cafe_id, 0, datetime.now],
+            )
             
         return JsonResponse({"message": "Item removed from cart successfully"})
 class AddCourseToCartView(View):
@@ -1486,3 +1569,56 @@ class PreviousCoursesView(View):
             
         return JsonResponse({"previous_courses": previous_courses})
 
+class PasswordChangeEmailView(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        recipient_email = data.get("email")
+        
+        subject = 'Password Change'
+        message = 'This is a password change email'
+        from_email = 'your_email@example.com'
+        recipient_list = [recipient_email]
+
+        send_mail(subject, message, from_email, recipient_list)
+        return JsonResponse({"message": "Mail sended successfully"})
+    
+class GetAllBuyingHistoryView(View):
+    def get(self, request):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM buying_history GROUP BY purchaser_id")
+            items = cursor.fetchall()
+        
+        buying_history_data = []
+        for item in items:
+            buying_history={
+                "history_id": item[0],
+                "purchaser_id": item[1],
+                "course_id": item[2],
+                "cafe_item_id": item[3],
+                "lane_id": item[4],
+                "quantity": item[5],
+                "purchased_at": item[6]
+            } 
+            buying_history_data.append(buying_history)
+        return JsonResponse({"buying_history": buying_history_data})
+        
+class GetUserBuyingHistoryView(View):
+    def get(self, request):
+        user_id = request.GET.get('user_id')
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM buying_history WHERE user_id=%s", [user_id])
+            items = cursor.fetchall()
+        
+        buying_history_data = []
+        for item in items:
+            buying_history={
+                "history_id": item[0],
+                "purchaser_id": item[1],
+                "course_id": item[2],
+                "cafe_item_id": item[3],
+                "lane_id": item[4],
+                "quantity": item[5],
+                "purchased_at": item[6]
+            } 
+            buying_history_data.append(buying_history)
+        return JsonResponse({"buying_history": buying_history_data})

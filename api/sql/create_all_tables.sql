@@ -58,6 +58,7 @@ CREATE TABLE lane(
     lifeguard_id INT,
     start_time DATETIME,
     end_time DATETIME,
+    booking_price INT,
     availability VARCHAR(255)
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
     FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),
@@ -224,6 +225,7 @@ CREATE TABLE private_booking (
     UNIQUE (swimmer_id, lane_id, start_time, end_time),
     PRIMARY KEY (private_booking_id, swimmer_id)
 );
+
 CREATE TABLE teaches(
 	teaches_id SERIAL PRIMARY KEY,
 	lesson_id INT,
@@ -232,3 +234,17 @@ CREATE TABLE teaches(
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id)
 );
 
+CREATE TABLE buying_history(
+    history_id SERIAL PRIMARY KEY,
+    purchaser_id INT NOT NULL,
+    course_id INT,
+    cafe_item_id INT,
+    cafe_id INT,
+    lane_id INT,
+    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (purchaser_id) REFERENCES swimmer(swimmer_id),
+    FOREIGN KEY (course_id) REFERENCES course(course_id),
+    FOREIGN KEY (cafe_item_id) REFERENCES cafe_item(cafe_item_id),
+    FOREIGN KEY (cafe_id) REFERENCES cafe(cafe_id),
+    FOREIGN KEY (lane_id) REFERENCES lane(lane_id)
+);

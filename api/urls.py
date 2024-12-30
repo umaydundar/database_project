@@ -68,4 +68,8 @@ urlpatterns = [
     path('get_coach/', GetCoachView.as_view(), name='get_coach'),
     path('get_lifeguard/', GetLifeguardView.as_view(), name='get_lifeguard'),
     path('get_admin/', GetAdministratorView.as_view(), name='get_admin'),
+    path('send_password_change_mail/', PasswordChangeEmailView.as_view(), name='send_password_change_email'),
+    path('buy_cafe_item/', BuyCafeItemView.as_view(), name='buy_cafe_item'),
+    path('get_buying_history_all_users/', GetAllBuyingHistoryView.as_view(), name='all_buying_history'),
+    path('get_buying_history_user/', GetUserBuyingHistoryView.as_view(), name='user_buying_history')
 ]
