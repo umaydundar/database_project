@@ -19,7 +19,7 @@ const ChangePassword = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const { username, currentPassword, newPassword } = formData;
+        const {username, currentPassword,  newPassword } = formData;
 
         try {
             const response = await fetch("/api/change_password", {
@@ -27,7 +27,7 @@ const ChangePassword = () => {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ username, currentPassword, newPassword }),
+                body: JSON.stringify({ "username": username, "password": currentPassword, "new-password":newPassword }),
             });
 
             if (response.ok) {

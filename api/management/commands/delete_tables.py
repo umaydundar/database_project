@@ -1,12 +1,12 @@
 import os
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from administration.utils.sql_utils import execute_sql
+from api.utils.sql_utils import execute_sql
 
 class Command(BaseCommand):
 
     def handle(self,*args, **kwargs):
-        sql_file_path = os.path.join(settings.BASE_DIR, 'administration', 'sql', 'drop_all_tables.sql')
+        sql_file_path = os.path.join(settings.BASE_DIR, 'api', 'sql', 'drop_all_tables.sql')
         if os.path.exists(sql_file_path):
             try:
                 self.stdout.write("Deleting tables for entire project")

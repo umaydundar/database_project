@@ -1509,6 +1509,16 @@ class FinishCourseView(View):
                 "UPDATE course_schedule SET status = 'finished' WHERE course_id = %s AND coach_id=%s",
                 [course_id, coach_id],
             )
+            
+            cursor.execute("SELECT * FROM course WHERE course_id =%s", [course_id])
+            course = cursor.fetchone()
+            course_price = course[9]
+            
+            cursor.execute("SELECT COUNT(*) FROM buying_history WHERE course_id=%s", [course_id])
+            participant_count = cursor.fetchone[0]
+            course_price = (course_price * participant_count * 60)/100.0
+            
+            cursor.execute("UPDATE all_users SET account_money = account_money + %s WHERE user_id=%s",[course_price, coach_id])
 
         return JsonResponse({"message": "Course marked as finished successfully"})
     

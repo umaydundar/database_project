@@ -15,7 +15,7 @@ CREATE TABLE swimming_pool(
     opening_hour TIME NOT NULL,
     closing_hour TIME NOT NULL,
     working_days TEXT NOT NULL,
-    location TEXT,
+    location TEXT
 );
 
 CREATE TABLE worker (
@@ -56,14 +56,15 @@ CREATE TABLE lane(
     pool_id INT,
     lane_number INT,
     lifeguard_id INT,
-    start_time DATETIME,
-    end_time DATETIME,
+    start_time TIME,
+    end_time TIME,
     booking_price INT,
-    availability VARCHAR(255)
+    availability VARCHAR(255),
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
     FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),
+    UNIQUE (lane_id),
     PRIMARY KEY (lane_id, pool_id),
-    check(availability in ("available", "added-to-cart", "in-use"))
+    check(availability in ('available', 'added-to-cart', 'in-use'))
 );
 
 CREATE TABLE swimmer (
@@ -86,6 +87,7 @@ CREATE TABLE member_swimmer(
     number_of_personal_training_hours INT,
     ranking INT,
     number_of_items_purchased INT,
+    personal_coach_id INT,
     FOREIGN KEY (swimmer_id) REFERENCES swimmer(swimmer_id),
     FOREIGN KEY (personal_coach_id) REFERENCES coach(coach_id)
 );
@@ -170,6 +172,7 @@ CREATE TABLE cafe_item(
     item_count INT,
     price INT,
     FOREIGN KEY (cafe_id) REFERENCES cafe(cafe_id),
+    UNIQUE(cafe_item_id),
     PRIMARY KEY (cafe_item_id, cafe_id)
 );
 
@@ -217,8 +220,8 @@ CREATE TABLE private_booking (
     private_booking_id SERIAL,
     swimmer_id INT,
     lane_id INT,
-    start_time DATETIME,
-    end_time DATETIME,
+    start_time TIME,
+    end_time TIME,
     status VARCHAR(50) DEFAULT 'active',
     FOREIGN KEY (swimmer_id) REFERENCES swimmer(swimmer_id),
     FOREIGN KEY (lane_id) REFERENCES lane(lane_id),
