@@ -1,5 +1,4 @@
-// Membership.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Sidebar from './LayoutNonMember.jsx';
 import './BecomeMember.css';
 
@@ -17,9 +16,6 @@ const Membership = () => {
         phone: '',
         address: '',
         membershipPlan: 'Basic',
-        cardNumber: '',
-        expiryDate: '',
-        cvv: '',
     });
 
     // Submission status
@@ -48,41 +44,14 @@ const Membership = () => {
         return phoneRegex.test(phone);
     };
 
-    const validateCardNumber = (number) => {
-        const cardRegex = /^[0-9]{16}$/;
-        return cardRegex.test(number);
-    };
-
-    const validateExpiryDate = (date) => {
-        if (!date) return false;
-        const [year, month] = date.split('-').map(Number);
-        const today = new Date();
-        const expiry = new Date(year, month - 1);
-        return expiry > today;
-    };
-
-    const validateCVV = (cvv) => {
-        const cvvRegex = /^[0-9]{3,4}$/;
-        return cvvRegex.test(cvv);
-    };
-
     // Handle form submission
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        const { fullName, email, phone, address, membershipPlan, cardNumber, expiryDate, cvv } = formData;
+        const { fullName, email, phone, address, membershipPlan } = formData;
 
         // Basic validation
-        if (
-            !fullName ||
-            !email ||
-            !phone ||
-            !address ||
-            !membershipPlan ||
-            !cardNumber ||
-            !expiryDate ||
-            !cvv
-        ) {
+        if (!fullName || !email || !phone || !address || !membershipPlan) {
             setSubmissionStatus({
                 success: false,
                 message: 'Please fill in all required fields.',
@@ -106,30 +75,6 @@ const Membership = () => {
             return;
         }
 
-        if (!validateCardNumber(cardNumber)) {
-            setSubmissionStatus({
-                success: false,
-                message: 'Please enter a valid 16-digit card number.',
-            });
-            return;
-        }
-
-        if (!validateExpiryDate(expiryDate)) {
-            setSubmissionStatus({
-                success: false,
-                message: 'Please enter a valid expiry date.',
-            });
-            return;
-        }
-
-        if (!validateCVV(cvv)) {
-            setSubmissionStatus({
-                success: false,
-                message: 'Please enter a valid 3 or 4-digit CVV.',
-            });
-            return;
-        }
-
         // Create new membership entry
         const newMembership = {
             id: Date.now(),
@@ -149,9 +94,6 @@ const Membership = () => {
             phone: '',
             address: '',
             membershipPlan: 'Basic',
-            cardNumber: '',
-            expiryDate: '',
-            cvv: '',
         });
         setSubmissionStatus({
             success: true,
@@ -219,47 +161,6 @@ const Membership = () => {
                             </select>
                         </div>
 
-                        {/* Payment Information */}
-                        <div className="membership-form-group">
-                            <label htmlFor="cardNumber">Card Number<span className="required">*</span>:</label>
-                            <input
-                                type="text"
-                                id="cardNumber"
-                                name="cardNumber"
-                                value={formData.cardNumber}
-                                onChange={handleChange}
-                                required
-                                placeholder="1234 5678 9012 3456"
-                                maxLength="19"
-                            />
-                        </div>
-
-                        <div className="membership-form-group">
-                            <label htmlFor="expiryDate">Expiry Date<span className="required">*</span>:</label>
-                            <input
-                                type="month"
-                                id="expiryDate"
-                                name="expiryDate"
-                                value={formData.expiryDate}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        <div className="membership-form-group">
-                            <label htmlFor="cvv">CVV<span className="required">*</span>:</label>
-                            <input
-                                type="text"
-                                id="cvv"
-                                name="cvv"
-                                value={formData.cvv}
-                                onChange={handleChange}
-                                required
-                                placeholder="123"
-                                maxLength="4"
-                            />
-                        </div>
-
                         {/* Submission Status */}
                         {submissionStatus.message && (
                             <p className={`membership-message ${submissionStatus.success ? 'success' : 'error'}`}>
@@ -276,7 +177,6 @@ const Membership = () => {
             </div>
         </div>
     );
-
 };
 
 export default Membership;

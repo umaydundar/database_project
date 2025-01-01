@@ -1,7 +1,11 @@
+// AllCoursesNonMember.jsx
 import React, { useState } from 'react';
 import Sidebar from './LayoutMember.jsx';
 import './AllCoursesMember.css';
 import { FaEye } from 'react-icons/fa';
+
+// 1) Import our custom hook
+import { useCart } from "../NonMember/CartContextNonmember"; // <-- Adjust path as needed
 
 const AllCourses = () => {
     const allCourses = [
@@ -19,6 +23,7 @@ const AllCourses = () => {
             schedule: 'Mondays and Wednesdays, 6:00 PM - 7:30 PM',
             restrictions: 'Must be able to swim at least 25 meters.',
             announcements: 'New swimming goggles available for purchase.',
+            price: 100, // Add a price field if it’s not there
         },
         {
             id: 2,
@@ -34,6 +39,7 @@ const AllCourses = () => {
             schedule: 'Tuesdays and Thursdays, 5:00 PM - 6:30 PM',
             restrictions: 'Must complete Beginner Swimming course or equivalent.',
             announcements: 'Coach Jane will be joining us for the first session.',
+            price: 120,
         },
         {
             id: 3,
@@ -49,6 +55,7 @@ const AllCourses = () => {
             schedule: 'Fridays, 4:00 PM - 6:00 PM',
             restrictions: 'Must have completed Intermediate Swimming course.',
             announcements: 'Final course of the season.',
+            price: 150,
         },
         {
             id: 4,
@@ -64,11 +71,15 @@ const AllCourses = () => {
             schedule: 'Saturdays, 9:00 AM - 10:30 AM',
             restrictions: 'Open to all fitness levels.',
             announcements: 'Bring your own water bottle.',
+            price: 90,
         },
     ];
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState(null);
+
+    // 2) Destructure addToCart from useCart()
+    const { addToCart } = useCart();
 
     // Sorting courses
     const sortedCourses = [...allCourses].sort((a, b) => {
@@ -93,6 +104,12 @@ const AllCourses = () => {
         setSelectedCourse(null);
     };
 
+    // 3) The function that adds the course to cart
+    const handleEnroll = (course) => {
+        addToCart(course);
+        alert(`Added "${course.title}" to cart.`);
+    };
+
     return (
         <div className="allcourses-main-container">
             <div className="allcourses-bottom-container">
@@ -108,12 +125,24 @@ const AllCourses = () => {
                                     <h2>{course.title}</h2>
                                 </div>
                                 <div className="allcourses-course-brief">
-                                    <p><strong>Instructor:</strong> {course.instructor} (Rating: {course.rating})</p>
-                                    <p><strong>Capacity:</strong> {course.capacity - course.enrolled}/{course.capacity}</p>
-                                    <p><strong>Deadline:</strong> {course.enrollmentDeadline}</p>
+                                    <p>
+                                        <strong>Instructor:</strong> {course.instructor} (Rating: {course.rating})
+                                    </p>
+                                    <p>
+                                        <strong>Capacity:</strong> {course.capacity - course.enrolled}/{course.capacity}
+                                    </p>
+                                    <p>
+                                        <strong>Deadline:</strong> {course.enrollmentDeadline}
+                                    </p>
+                                    <p>
+                                        <strong>Price:</strong> ${course.price}
+                                    </p>
                                 </div>
                                 <div className="allcourses-course-actions">
-                                    <button className="allcourses-details-button" onClick={() => handleDetailsClick(course)}>
+                                    <button
+                                        className="allcourses-details-button"
+                                        onClick={() => handleDetailsClick(course)}
+                                    >
                                         <FaEye /> Details
                                     </button>
                                     {course.enrolled === course.capacity ? (
@@ -121,7 +150,10 @@ const AllCourses = () => {
                                             Full
                                         </button>
                                     ) : (
-                                        <button className="allcourses-enroll-button">
+                                        <button
+                                            className="allcourses-enroll-button"
+                                            onClick={() => handleEnroll(course)}
+                                        >
                                             Enroll
                                         </button>
                                     )}
@@ -137,14 +169,32 @@ const AllCourses = () => {
                 <div className="allcourses-modal-overlay" onClick={handleCloseModal}>
                     <div className="allcourses-modal-content" onClick={(e) => e.stopPropagation()}>
                         <h2>{selectedCourse.title}</h2>
-                        <p><strong>Instructor:</strong> {selectedCourse.instructor} (Rating: {selectedCourse.rating})</p>
-                        <p><strong>Description:</strong> {selectedCourse.description}</p>
-                        <p><strong>Duration:</strong> {selectedCourse.duration}</p>
-                        <p><strong>Pool Location:</strong> {selectedCourse.poolLocation}</p>
-                        <p><strong>Schedule:</strong> {selectedCourse.schedule}</p>
-                        <p><strong>Restrictions:</strong> {selectedCourse.restrictions}</p>
-                        <p><strong>Capacity:</strong> {selectedCourse.capacity - selectedCourse.enrolled}/{selectedCourse.capacity}</p>
-                        <p><strong>Announcements:</strong> {selectedCourse.announcements}</p>
+                        <p>
+                            <strong>Instructor:</strong> {selectedCourse.instructor} (Rating:{' '}
+                            {selectedCourse.rating})
+                        </p>
+                        <p>
+                            <strong>Description:</strong> {selectedCourse.description}
+                        </p>
+                        <p>
+                            <strong>Duration:</strong> {selectedCourse.duration}
+                        </p>
+                        <p>
+                            <strong>Pool Location:</strong> {selectedCourse.poolLocation}
+                        </p>
+                        <p>
+                            <strong>Schedule:</strong> {selectedCourse.schedule}
+                        </p>
+                        <p>
+                            <strong>Restrictions:</strong> {selectedCourse.restrictions}
+                        </p>
+                        <p>
+                            <strong>Capacity:</strong> {selectedCourse.capacity - selectedCourse.enrolled}/
+                            {selectedCourse.capacity}
+                        </p>
+                        <p>
+                            <strong>Announcements:</strong> {selectedCourse.announcements}
+                        </p>
 
                         <div className="allcourses-modal-buttons">
                             <button className="allcourses-close-button" onClick={handleCloseModal}>
