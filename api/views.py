@@ -68,6 +68,7 @@ class RegisterView(View):
         surname =  data.get('surname')
         password = data.get('password')
         user_type = data.get('user-type')
+        swim_proficiency = data.get('swim_proficiency')
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT user_id FROM all_users WHERE username=%s", [username])
@@ -78,10 +79,10 @@ class RegisterView(View):
 
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO all_users (forename, surname, username, password, account_money, user_type)
+                INSERT INTO all_users (forename, surname, username, password, user_type)
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING user_id
-            """, [name, surname, username, password, 0, user_type])
+            """, [name, surname, username, password, user_type])
             new_user_id = cursor.fetchone()[0]
 
         if new_user_id and user_type == "1":  # Swimmer
@@ -89,7 +90,7 @@ class RegisterView(View):
                 cursor.execute("""
                     INSERT INTO swimmer (swimmer_id, phone_number, age, gender, swimming_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
-                """, [new_user_id, "", 0, "", "", 0, 0, 0,  "nonmember"]) 
+                """, [new_user_id, "", 0, "", swim_proficiency, 0, 0, 0,  "nonmember"]) 
                 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -130,7 +131,7 @@ class RegisterView(View):
                     VALUES (%s, %s)
                 """, [new_user_id, 0]) 
 
-        return JsonResponse({"message": "User registered successfully", "user_id": new_user_id}, status=201)
+        return JsonResponse({"message": "User registered successfully", "user_id": new_user_id}, status=200)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(View):
@@ -381,10 +382,10 @@ class EnrollCourseView(View):
             
             price = course[9]
         
-            cursor.execute("SELECT account_money FROM all_users WHERE user_id=%s", [swimmer_id])
-            account_money = cursor.fetchone()
+            cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id=%s", [swimmer_id])
+            total_money = cursor.fetchone()
             
-            if not account_money or account_money[0] < price:
+            if not total_money or total_money[0] < price:
                 return JsonResponse({"error": "Insufficient money"}, status=400)
 
         with connection.cursor() as cursor:
@@ -393,7 +394,7 @@ class EnrollCourseView(View):
                 [swimmer_id, course_id],
             )  
         
-            cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [price, swimmer_id])
+            cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [price, swimmer_id])
             
             
         with connection.cursor() as cursor:
@@ -592,7 +593,7 @@ class BookLaneView(View):
             lane = cursor.fetchone()
             booking_price = lane[6]
             
-            cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [booking_price, swimmer_id])
+            cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE user_id = %s", [booking_price, swimmer_id])
             
             cursor.execute(
                 "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
@@ -618,8 +619,7 @@ class UsersView(View):
                     "surname": user[3],
                     "username": user[4],
                     "password": user[5],
-                    "account_money": user[6],
-                    "user_type": user[7]
+                    "user_type": user[6]
                     }
             all_users.append(user_data)
         return JsonResponse({"users": all_users})
@@ -665,7 +665,7 @@ class GetUserView(View):
                 "surname": user[3],
                 "username": user[4],
                 "password": user[5],
-                "account_money": user[6]
+                "user_type": user[6]
             }
         
         return JsonResponse({"user": user_data})
@@ -690,10 +690,10 @@ class CreateUserView(View):
 
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO all_users (forename, surname, username, password, account_money, user_type)
+                INSERT INTO all_users (forename, surname, username, password, user_type)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING user_id
-            """, [name, surname, username, password, 0, user_type])
+            """, [name, surname, username, password, user_type])
             new_user_id = cursor.fetchone()[0]
 
         if new_user_id and user_type == "1":  # Swimmer
@@ -802,7 +802,7 @@ class UpdateMemberProfileView(View):
         surname = data.get('surname')
         username = data.get('username')
         password = data.get('password')
-        account_money = data.get("account_money")
+        total_money = data.get("total_money")
         swim_proficiency = data.get("swim_proficiency")
         number_of_booked_slots = data.get("number_of_booked_slots")
         total_courses_enrolled = data.get("total_courses_enrolled")
@@ -818,12 +818,12 @@ class UpdateMemberProfileView(View):
         phone_number = data.get("phone_number")
         
         with connection.cursor() as cursor:
-                cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, account_money=%s WHERE user_id=%s",
-                               [user_image, forename, surname, username, password, account_money, user_id])
+                cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s WHERE user_id=%s",
+                               [user_image, forename, surname, username, password, user_id])
                 
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE swimmer SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, number_of_booked_slots=%s, total_courses_enrolled=%s, total_courses_terminated=%s, membership_status=%s WHERE swimmer_id=%s",
-                            [phone_number, age, gender, swim_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status, user_id])
+            cursor.execute("UPDATE swimmer SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, number_of_booked_slots=%s, total_courses_enrolled=%s, total_courses_terminated=%s, membership_status=%s, total_money=%s WHERE swimmer_id=%s",
+                            [phone_number, age, gender, swim_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status, total_money, user_id])
             
         with connection.cursor() as cursor:
             cursor.execute("UPDATE member_swimmer SET points=%s, monthly_payment_amount=%s, number_of_personal_training_hours=%s, ranking=%s, number_of_items_purchased=%s WHERE swimmer_id=%s",
@@ -842,7 +842,7 @@ class UpdateNonmemberProfileView(View):
         surname = data.get('surname')
         username = data.get('username')
         password = data.get('password')
-        account_money = data.get("account_money")
+        total_money = data.get("total_money")
         swim_proficiency = data.get("swim_proficiency")
         number_of_booked_slots = data.get("number_of_booked_slots")
         total_courses_enrolled = data.get("total_courses_enrolled")
@@ -853,12 +853,12 @@ class UpdateNonmemberProfileView(View):
         phone_number = data.get("phone_number")
         
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, account_money=%s WHERE user_id=%s",
-                            [user_image, forename, surname, username, password, account_money, user_id])
+            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s WHERE user_id=%s",
+                            [user_image, forename, surname, username, password, user_id])
                 
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE swimmer SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, number_of_booked_slots=%s, total_courses_enrolled=%s, total_courses_terminated=%s, membership_status=%s WHERE swimmer_id=%s",
-                            [phone_number, age, gender, swim_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status, user_id])
+            cursor.execute("UPDATE swimmer SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, number_of_booked_slots=%s, total_courses_enrolled=%s, total_courses_terminated=%s, membership_status=%s,total_money WHERE swimmer_id=%s",
+                            [phone_number, age, gender, swim_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status, total_money, user_id])
         
         return JsonResponse({"message": "Nonmember updated successfully"})
     
@@ -873,7 +873,7 @@ class UpdateCoachProfileView(View):
         surname = data.get('surname')
         username = data.get('username')
         password = data.get('password')
-        account_money = data.get("account_money")
+        balance = data.get("balance")
         pool_id = data.get("pool_id")
         salary = data.get("salary")
         age = data.get("age")
@@ -887,12 +887,12 @@ class UpdateCoachProfileView(View):
         
        
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, account_money=%s WHERE user_id=%s",
-                            [user_image, forename, surname, username, password, account_money, user_id])
+            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s WHERE user_id=%s",
+                            [user_image, forename, surname, username, password, user_id])
                 
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE worker SET pool_id=%s, salary=%s, age=%s, gender=%s, phone_number=%s, swimming_proficiency=%s, qualifications=%s WHERE worker_id=%s",
-                            [pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications, user_id])
+            cursor.execute("UPDATE worker SET pool_id=%s, salary=%s, age=%s, gender=%s, phone_number=%s, swimming_proficiency=%s, qualifications=%s, balance=%s WHERE worker_id=%s",
+                            [pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications, balance, user_id])
             
         with connection.cursor() as cursor:
             cursor.execute("UPDATE coach SET avg_rating=%s, coach_ranking=%s, specialties=%s WHERE coach_id=%s",
@@ -911,7 +911,7 @@ class UpdateLifeguardProfileView(View):
         surname = data.get('surname')
         username = data.get('username')
         password = data.get('password')
-        account_money = data.get("account_money")
+        balance = data.get("balance")
         pool_id = data.get("pool_id")
         salary = data.get("salary")
         age = data.get("age")
@@ -922,12 +922,12 @@ class UpdateLifeguardProfileView(View):
         certifications = data.get("certifications")
         
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, account_money=%s WHERE user_id=%s",
-                            [user_image, forename, surname, username, password, account_money, user_id])
+            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s WHERE user_id=%s",
+                            [user_image, forename, surname, username, password, user_id])
                 
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE worker SET pool_id=%s, salary=%s, age=%s, gender=%s, phone_number=%s, swimming_proficiency=%s, qualifications=%s WHERE worker_id=%s",
-                            [pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications, user_id])
+            cursor.execute("UPDATE worker SET pool_id=%s, salary=%s, age=%s, gender=%s, phone_number=%s, swimming_proficiency=%s, qualifications=%s, balance=%s WHERE worker_id=%s",
+                            [pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications, balance, user_id])
             
         with connection.cursor() as cursor:
             cursor.execute("UPDATE lifeguard SET certifications=%s WHERE lifeguard_id=%s",
@@ -946,12 +946,11 @@ class UpdateAdministratorProfileView(View):
         surname = data.get('surname')
         username = data.get('username')
         password = data.get('password')
-        account_money = data.get("account_money")
         number_of_reports = data.get("number_of_reports")
         
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, account_money=%s WHERE user_id=%s",
-                        [user_image, forename, surname, username, password, account_money, user_id])
+            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, WHERE user_id=%s",
+                        [user_image, forename, surname, username, password, user_id])
                 
         with connection.cursor() as cursor:
             cursor.execute("UPDATE administrator SET number_of_reports=%s WHERE administrator_id=%s",
@@ -1462,32 +1461,43 @@ class UpcomingPoolBookingsView(View):
         return JsonResponse({"upcoming_bookings": booking_data})
 
 @method_decorator(csrf_exempt, name='dispatch')
-class GetAccountMoneyView(View):
+class GetTotalMoneyView(View):
     permission_classes = [AllowAny]
     def get(self, request):
-        user_id = request.GET.get('user_id')
+        swimmer_id = request.GET.get('swimmer_id')
         with connection.cursor() as cursor:
-            cursor.execute("SELECT account_money FROM all_users WHERE user_id=%s", [user_id])
+            cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id=%s", [swimmer_id])
             balance = cursor.fetchone()
     
-        return JsonResponse({"account_money": balance[0]})
+        return JsonResponse({"total_money": balance[0]})
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class GetBalanceView(View):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        worker_id = request.GET.get('worker_id')
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT balance FROM worker WHERE worker_id=%s", [worker_id])
+            balance = cursor.fetchone()
+    
+        return JsonResponse({"balance": balance[0]})
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WithdrawMoneyView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        user_id = data.get('user_id')
+        swimmer_id = data.get('swimmer_id')
         amount = float(data.get('amount'))
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT account_money FROM all_users WHERE user_id=%s", [user_id])
-            account_money = cursor.fetchone()
+            cursor.execute("SELECT total FROM swimmer WHERE swimmer_id=%s", [swimmer_id])
+            total_money = cursor.fetchone()
             
-            if not account_money or account_money[0] < amount:
+            if not total_money or total_money[0] < amount:
                 return JsonResponse({"error": "Insufficient funds or user not found"}, status=400)
 
-            cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [amount, user_id])
+            cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [amount, swimmer_id])
         
         return JsonResponse({"message": "Withdrawal successful"})
 
@@ -1496,11 +1506,11 @@ class DepositMoneyView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        user_id = data.get('user_id')
+        swimmer_id = data.get('swimmer_id')
         amount = float(data.get('amount'))
 
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET account_money = account_money + %s WHERE user_id = %s", [amount, user_id])
+            cursor.execute("UPDATE swimmer SET total_money = total_money + %s WHERE swimmer_id = %s", [amount, swimmer_id])
         
         return JsonResponse({"message": "Deposit successful"}, status=200)
 
@@ -1552,6 +1562,7 @@ class BuyCafeItemView(View):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
         item_id = data.get("cafe_item_id")
+        is_swimmer = data.get("is_swimmer")
         
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1562,24 +1573,43 @@ class BuyCafeItemView(View):
             price = item[0]
             cafe_id = item[1]
             
-            cursor.execute("SELECT account_money FROM all_users WHERE user_id=%s", [purchaser_id])
-            account_money = cursor.fetchone()
-            
-            if not account_money or account_money[0] < price:
-                return JsonResponse({"error": "Insufficient money"}, status=400)
-            
-            cursor.execute(
-                "DELETE FROM cart WHERE purchaser_id = %s AND cafe_item_id = %s",
-                [purchaser_id, item_id],
-            )
-            
-            cursor.execute("UPDATE all_users SET account_money = account_money - %s WHERE user_id = %s", [price, purchaser_id])
-            
-            cursor.execute(
-                "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
-                [purchaser_id, 0, item_id, cafe_id, 0, datetime.now],
-            )
-            
+        if(is_swimmer):
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id=%s", [purchaser_id])
+                total_money = cursor.fetchone()
+                
+                if not total_money or total_money[0] < price:
+                    return JsonResponse({"error": "Insufficient money"}, status=400)
+                
+                cursor.execute(
+                    "DELETE FROM cart WHERE purchaser_id = %s AND cafe_item_id = %s",
+                    [purchaser_id, item_id],
+                )
+                
+                cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [price, purchaser_id])
+        
+        else:
+        
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT balance FROM worker WHERE worker_id=%s", [purchaser_id])
+                balance = cursor.fetchone()
+                
+                if not balance or balance[0] < price:
+                    return JsonResponse({"error": "Insufficient money"}, status=400)
+                
+                cursor.execute(
+                    "DELETE FROM cart WHERE purchaser_id = %s AND cafe_item_id = %s",
+                    [purchaser_id, item_id],
+                )
+                
+                cursor.execute("UPDATE worker SET balance = balance - %s WHERE worker_id = %s", [price, purchaser_id])
+           
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                    [purchaser_id, 0, item_id, cafe_id, 0, datetime.now],
+                )
+                
         return JsonResponse({"message": "Item removed from cart successfully"})
 @method_decorator(csrf_exempt, name='dispatch')
 class AddCourseToCartView(View):
@@ -1652,7 +1682,7 @@ class FinishCourseView(View):
             participant_count = cursor.fetchone[0]
             course_price = (course_price * participant_count * 60)/100.0
             
-            cursor.execute("UPDATE all_users SET account_money = account_money + %s WHERE user_id=%s",[course_price, coach_id])
+            cursor.execute("UPDATE worker SET balance = balance+ %s WHERE worker_id=%s",[course_price, coach_id])
 
         return JsonResponse({"message": "Course marked as finished successfully"})
     

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./ChangePassword.css";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const ChangePassword = () => {
@@ -22,16 +23,19 @@ const ChangePassword = () => {
         const {username, currentPassword,  newPassword } = formData;
 
         try {
-            const response = await fetch("/api/change_password", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ "username": username, "password": currentPassword, "new-password":newPassword }),
-            });
+            const response = await axios.post(
+                "http://127.0.0.1:8000/api/change_password/",
+                { "username": username, "password": currentPassword, "new-password":newPassword },
+                {
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    withCredentials: true, // Ensure cookies are sent
+                }
+            );
 
-            if (response.ok) {
-                navigate("/login");
+            if (response.status === 200) {
+                navigate("/");
             } else {
                 const result = await response.json();
                 setError(result.error || "Failed to change password.");

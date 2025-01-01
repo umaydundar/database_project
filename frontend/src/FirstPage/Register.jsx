@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 import "./Register.css";
 import { useNavigate } from "react-router-dom";
 
@@ -7,6 +8,7 @@ const RegisterPage = () => {
     const [sex, setSex] = useState("");
     const [swimmingProficiency, setSwimmingProficiency] = useState("");
     const [inputsVisible, setInputsVisible] = useState(false);
+    const [error, setError] = useState("");
     const navigate = useNavigate();
 
     const handleRoleChange = (e) => {
@@ -14,12 +16,41 @@ const RegisterPage = () => {
         setInputsVisible(true);
     };
 
-    const handleRegisterClick = (e) => {
+    const handleRegisterClick = async (e) => {
         e.preventDefault();
-        // Replace this alert with your registration logic
-        alert(`Role: ${role}, Sex: ${sex}, Swimming Proficiency: ${swimmingProficiency}`);
-        // Navigate to the login page after registration
-        navigate("/");
+        e.preventDefault();
+        const formData = {
+            role,
+            sex,
+            swimmingProficiency,
+            firstName: e.target.firstName.value,
+            lastName: e.target.lastName.value,
+            username: e.target.username.value,
+            password: e.target.password.value,
+        };
+
+        console.log(formData);
+
+        try {
+            const response = await axios.post(
+                "http://127.0.0.1:8000/api/register/", 
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    withCredentials: true, 
+                }
+            );
+
+            if (response.status === 200) {
+                navigate("/"); 
+            } else {
+                setError("Registration failed. Please try again.");
+            }
+        } catch (err) {
+            setError("An unexpected error occurred.");
+        }
     };
 
     return (
@@ -79,17 +110,17 @@ const RegisterPage = () => {
                                 </label>
                             </div>
 
-                            {/* Email */}
+                            {/* username*/}
                             <div className="input-group">
                                 <input
-                                    type="email"
-                                    id="email"
+                                    type="text"
+                                    id="username"
                                     className="input-field"
-                                    placeholder="Email"
+                                    placeholder="Username"
                                     required
                                 />
-                                <label htmlFor="email" className="input-label">
-                                    Email
+                                <label htmlFor="username" className="input-label">
+                                    Username
                                 </label>
                             </div>
 
