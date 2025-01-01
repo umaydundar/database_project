@@ -5,7 +5,6 @@ CREATE TABLE all_users (
     surname VARCHAR(255),
     username VARCHAR(255),
     password VARCHAR(255),
-    account_money BIGINT,
     user_type VARCHAR(255)
 );
 
@@ -21,14 +20,14 @@ CREATE TABLE swimming_pool(
 CREATE TABLE worker (
     worker_id SERIAL PRIMARY KEY,
     pool_id INT,
-    salary INT,
+    balance INT,
     age INT,
     gender VARCHAR(100),
     phone_number VARCHAR(15),
-    swim_proficiency VARCHAR(100),
     qualifications TEXT,
     FOREIGN KEY (worker_id) REFERENCES all_users(user_id),
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id)
+    check(gender in ('male', 'female'))
 );
 
 CREATE TABLE coach (
@@ -72,12 +71,14 @@ CREATE TABLE swimmer (
     phone_number VARCHAR(15),
     age INT,
     gender VARCHAR(100),
+    total_money INT,
     swimming_proficiency VARCHAR(100),
     number_of_booked_slots INT,
     total_courses_enrolled INT,
     total_courses_terminated INT,
     membership_status VARCHAR(255),
     FOREIGN KEY (swimmer_id) REFERENCES all_users(user_id)
+    check(availability in ('beginner', 'intermediate', 'advanced'))
 );
 
 CREATE TABLE member_swimmer(
