@@ -4,47 +4,63 @@ from django.http import JsonResponse
 from django.views import View
 from django.db import connection
 from django.core.mail import send_mail
- 
+from django.middleware.csrf import get_token
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+
+class GetCSRFTokenView(View):
+    def get(self, request):
+        csrf_token = get_token(request)
+        return JsonResponse({"csrfToken": csrf_token})
+
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
-    class LoginView(View):
-        def post(self, request):
-            data = json.loads(request.body)
-            username = data.get('username')
-            password = data.get('password')
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM all_users WHERE username=%s AND password=%s", [username, password])
+            user = cursor.fetchone()
+
+        if user:
+            user_id = user[0]
+            request.session['user_id'] = user_id
 
             with connection.cursor() as cursor:
-                cursor.execute("SELECT * FROM all_users WHERE username=%s AND password=%s", [username, password])
-                user = cursor.fetchone()
+                cursor.execute("SELECT * FROM member_swimmer WHERE swimmer_id=%s", [user_id])
+                swimmer = cursor.fetchone()
+                if swimmer:
+                    return JsonResponse({"user_role": "member", "user_id": user_id}, status=200)
 
-            if user:
-                user_id = user[0]
-                request.session['user_id'] = user_id
+                cursor.execute("SELECT * FROM coach WHERE coach_id=%s", [user_id])
+                coach = cursor.fetchone()
+                if coach:
+                    return JsonResponse({"user_role": "coach", "user_id": user_id}, status=200)
 
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT * FROM member_swimmer WHERE swimmer_id=%s", [user_id])
-                    swimmer = cursor.fetchone()
-                    if swimmer:
-                        return JsonResponse({"user_role": "member", "user_id": user_id}, status=200)
+                cursor.execute("SELECT * FROM lifeguard WHERE lifeguard_id=%s", [user_id])
+                lifeguard = cursor.fetchone()
+                if lifeguard:
+                    return JsonResponse({"user_role": "lifeguard", "user_id": user_id}, status=200)
 
-                    cursor.execute("SELECT * FROM coach WHERE coach_id=%s", [user_id])
-                    coach = cursor.fetchone()
-                    if coach:
-                        return JsonResponse({"user_role": "coach", "user_id": user_id}, status=200)
+                cursor.execute("SELECT * FROM administrator WHERE administrator_id=%s", [user_id])
+                admin = cursor.fetchone()
+                if admin:
+                    return JsonResponse({"user_role": "admin", "user_id": user_id}, status=200)
 
-                    cursor.execute("SELECT * FROM lifeguard WHERE lifeguard_id=%s", [user_id])
-                    lifeguard = cursor.fetchone()
-                    if lifeguard:
-                        return JsonResponse({"user_role": "lifeguard", "user_id": user_id}, status=200)
+                return JsonResponse({"user_role": "non-member", "user_id": user_id}, status=200)
+        else:
+            return JsonResponse({"error": "Invalid username or password"}, status=400)
 
-                    cursor.execute("SELECT * FROM administrator WHERE administrator_id=%s", [user_id])
-                    admin = cursor.fetchone()
-                    if admin:
-                        return JsonResponse({"user_role": "admin", "user_id": user_id}, status=200)
-
-                    return JsonResponse({"user_role": "non-member", "user_id": user_id}, status=200)
-            else:
-                return JsonResponse({"error": "Invalid username or password"}, status=400)
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         username = data.get('username')
@@ -116,7 +132,9 @@ class RegisterView(View):
 
         return JsonResponse({"message": "User registered successfully", "user_id": new_user_id}, status=201)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         username = data.get('username')
@@ -133,8 +151,9 @@ class ChangePasswordView(View):
             return JsonResponse({"message": "Password updated successfully"}, status=200)
         else:
             return JsonResponse({"error": "Invalid username or old password"}, status=400)
-
+@method_decorator(csrf_exempt, name='dispatch')
 class AllCoursesView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM course")
@@ -158,7 +177,9 @@ class AllCoursesView(View):
         all_course_data.append(all_course_data)
         return JsonResponse({"courses": all_course_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CurrentCoursesView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         swimmer_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
@@ -183,7 +204,9 @@ class CurrentCoursesView(View):
         current_course_data.append(current_course_data)
         return JsonResponse({"current-courses": current_course_data})
     
+@method_decorator(csrf_exempt, name='dispatch')  
 class PreviousCoursesView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         swimmer_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
@@ -208,7 +231,9 @@ class PreviousCoursesView(View):
         current_course_data.append(current_course_data)
         return JsonResponse({"previous-courses": current_course_data})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetCourseView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         course_id = request.GET.get('course_id')
         with connection.cursor() as cursor:
@@ -233,7 +258,9 @@ class GetCourseView(View):
         current_course_data.append(current_course_data)
         return JsonResponse({"course": current_course_data})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class CreateCourseView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         name = data.get("course_name")
@@ -264,7 +291,9 @@ class CreateCourseView(View):
         
         return JsonResponse({"message": "Course created successfully"}, status=201)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DeleteCourseView(View):
+    permission_classes = [AllowAny]
     def delete(self, request):
         data = json.loads(request.body)
         course_id = data.get('course_id')
@@ -282,7 +311,9 @@ class DeleteCourseView(View):
         
         return JsonResponse({"message": "Course deleted successfully"}, status=200)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateCourseView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         course_id = data.get("course_id")
@@ -325,8 +356,10 @@ class UpdateCourseView(View):
                         [capacity, is_full,skill_level, course_id])
             
         return JsonResponse({"message": "Course updated successfully"}, status=200)
-
+    
+@method_decorator(csrf_exempt, name='dispatch')
 class EnrollCourseView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         swimmer_id = data.get("swimmer_id")
@@ -376,7 +409,9 @@ class EnrollCourseView(View):
         
         return JsonResponse({"message": "Successfully enrolled in the course"}, status=201)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class CoachRatingView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         coach_id = request.GET.get("coach_id")
                
@@ -385,8 +420,9 @@ class CoachRatingView(View):
             avg_rating = cursor.fetchone()
         
         return JsonResponse({"coach_id": coach_id, "avg_rating": avg_rating or 0.0}, status=200)
-    
+@method_decorator(csrf_exempt, name='dispatch')
 class AddRatingView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         coach_id = data.get("coach_id")
@@ -400,7 +436,9 @@ class AddRatingView(View):
         
         return JsonResponse({"message": "Rating added successfully"}, status=200)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateRatingView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         coach_id = data.get("coach_id")
@@ -413,7 +451,9 @@ class UpdateRatingView(View):
                 [rating, course_id, coach_id, swimmer_id])
         return JsonResponse({"message": "Rating updated successfully"}, status=200)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class CourseCommentsView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         course_id = request.GET.get("course_id")
 
@@ -437,7 +477,9 @@ class CourseCommentsView(View):
             comments_data.append(course_comments)
         return JsonResponse({"course_comments": comments_data}, status=200)
         
+@method_decorator(csrf_exempt, name='dispatch')
 class AddCourseCommentView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         coach_id = data.get("coach_id")
@@ -451,7 +493,9 @@ class AddCourseCommentView(View):
         
         return JsonResponse({"message": "Comment added successfully"}, status=200)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class PoolsView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM swimming_pool")
@@ -470,7 +514,9 @@ class PoolsView(View):
             pools_data.append(pool_data)
         return JsonResponse({"pools": pools_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class AllLanesView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         pool_id = request.GET.get("pool_id")
         with connection.cursor() as cursor:
@@ -491,7 +537,9 @@ class AllLanesView(View):
             all_lanes.append(lane)
         return JsonResponse({"lanes": all_lanes})
         
+@method_decorator(csrf_exempt, name='dispatch')
 class AvailableLanes(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         pool_id = request.GET.get("pool_id")
         with connection.cursor() as cursor:
@@ -512,7 +560,9 @@ class AvailableLanes(View):
             available_lanes.append(lane)
         return JsonResponse({"lanes": available_lanes})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class BookLaneView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         swimmer_id = data.get("swimmer_id")
@@ -551,7 +601,9 @@ class BookLaneView(View):
             
         return JsonResponse({"message": "Lane booked successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class UsersView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM all_users")
@@ -572,7 +624,9 @@ class UsersView(View):
             all_users.append(user_data)
         return JsonResponse({"users": all_users})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class AllSwimmersView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM swimmer")
@@ -594,7 +648,9 @@ class AllSwimmersView(View):
             all_swimmers.append(user_data)
         return JsonResponse({"swimmers": all_swimmers})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetUserView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         user_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
@@ -614,8 +670,10 @@ class GetUserView(View):
         
         return JsonResponse({"user": user_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CreateUserView(View):
-   def post(self, request):
+    permission_classes = [AllowAny]
+    def post(self, request):
         data = json.loads(request.body)
         username = data.get('username')
         name = data.get('forename')
@@ -686,7 +744,9 @@ class CreateUserView(View):
 
         return JsonResponse({"message": "User registered successfully", "user_id": new_user_id}, status=201)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DeleteUserView(View):
+    permission_classes = [AllowAny]
     def delete(self, request):
         user_id = request.GET.get('user_id')
         
@@ -731,7 +791,9 @@ class DeleteUserView(View):
     
         return JsonResponse({"message": "User deleted successfully"})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateMemberProfileView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get("user_id")
@@ -769,7 +831,9 @@ class UpdateMemberProfileView(View):
         
         return JsonResponse({"message": "Member updated successfully"})
      
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateNonmemberProfileView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get("user_id")
@@ -798,7 +862,9 @@ class UpdateNonmemberProfileView(View):
         
         return JsonResponse({"message": "Nonmember updated successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateCoachProfileView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get("user_id")
@@ -834,7 +900,9 @@ class UpdateCoachProfileView(View):
         
         return JsonResponse({"message": "Coach updated successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateLifeguardProfileView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get("user_id")
@@ -867,7 +935,9 @@ class UpdateLifeguardProfileView(View):
         
         return JsonResponse({"message": "Lifeguard updated successfully"})
         
+@method_decorator(csrf_exempt, name='dispatch')
 class UpdateAdministratorProfileView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get("user_id")
@@ -889,7 +959,9 @@ class UpdateAdministratorProfileView(View):
         
         return JsonResponse({"message": "Admin updated successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetUserView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         user_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
@@ -907,7 +979,9 @@ class GetUserView(View):
         else:
             return JsonResponse({"error": "User not found"}, status=404)
         
+@method_decorator(csrf_exempt, name='dispatch')
 class GetMemberSwimmerView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         member_id = request.GET.get('member_id')
         with connection.cursor() as cursor:
@@ -927,7 +1001,9 @@ class GetMemberSwimmerView(View):
         else:
             return JsonResponse({"error": "Member not found"}, status=404)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetNonmemberSwimmerView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         non_member_id = request.GET.get('non_member_id')
         with connection.cursor() as cursor:
@@ -943,7 +1019,9 @@ class GetNonmemberSwimmerView(View):
         else:
             return JsonResponse({"error": "Nonmember not found"}, status=404)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetCoachView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         coach_id = request.GET.get('coach_id')
         with connection.cursor() as cursor:
@@ -962,7 +1040,9 @@ class GetCoachView(View):
             return JsonResponse({"error": "Coach not found"}, status=404)
         
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetLifeguardView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
         with connection.cursor() as cursor:
@@ -978,7 +1058,9 @@ class GetLifeguardView(View):
         else:
             return JsonResponse({"error": "Lifeguard not found"}, status=404)
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetAdministratorView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         admin_id = request.GET.get('admin_id')
         with connection.cursor() as cursor:
@@ -994,7 +1076,9 @@ class GetAdministratorView(View):
         else:
             return JsonResponse({"error": "Admin not found"}, status=404)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class BecomeMemberView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
@@ -1008,7 +1092,9 @@ class BecomeMemberView(View):
         request.session.flush() 
         return JsonResponse({"message": "User has become a member successfully"}, status=200)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CancelMembershipView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
@@ -1022,7 +1108,9 @@ class CancelMembershipView(View):
         request.session.flush() 
         return JsonResponse({"message": "Membership canceled successfully"}, status=200)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DailyCoursesCoachView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         coach_id = request.GET.get('coach_id')
         with connection.cursor() as cursor:
@@ -1047,7 +1135,9 @@ class DailyCoursesCoachView(View):
             
         return JsonResponse({"daily_courses": course_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DailyCoursesMemberView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         member_id = request.GET.get('member_id')
         with connection.cursor() as cursor:
@@ -1074,7 +1164,9 @@ class DailyCoursesMemberView(View):
         ]
         return JsonResponse({"daily_courses": course_data})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class WeeklyCoursesCoachView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         coach_id = request.GET.get('coach_id')
         today = datetime.today()
@@ -1103,7 +1195,9 @@ class WeeklyCoursesCoachView(View):
         ]
         return JsonResponse({"weekly_courses": course_data})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class WeeklyCoursesMemberView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         member_id = request.GET.get('member_id')
         today = datetime.today()
@@ -1133,7 +1227,9 @@ class WeeklyCoursesMemberView(View):
            
         return JsonResponse({"weekly_courses": course_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DailyCoursesNonmemberView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         swimmer_id = request.GET.get('nonmember_id')
         with connection.cursor() as cursor:
@@ -1160,8 +1256,10 @@ class DailyCoursesNonmemberView(View):
         ]
         return JsonResponse({"daily_courses": course_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class WeeklyCoursesNonmemberView(View):
-   def get(self, request):
+    permission_classes = [AllowAny]
+    def get(self, request):
         nonmember_id = request.GET.get('nonmember_id')
         today = datetime.today()
         start_of_week = today - datetime.timedelta(days=today.weekday()) 
@@ -1190,7 +1288,9 @@ class WeeklyCoursesNonmemberView(View):
            
         return JsonResponse({"weekly_courses": course_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CafeItemsView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM cafe_items")
@@ -1211,7 +1311,9 @@ class CafeItemsView(View):
         return JsonResponse({"cafe_items": item_data})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CafeItemView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         cafe_item_id = request.GET.get('cafe_item_id')
         with connection.cursor() as cursor:
@@ -1229,7 +1331,9 @@ class CafeItemView(View):
         }
         return JsonResponse({"cafe_item": item_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CartItemsView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         user_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
@@ -1249,7 +1353,9 @@ class CartItemsView(View):
             cart_data.append(cart_item)
         return JsonResponse({"cart_items": cart_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CoachCoursesView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         coach_id = request.GET.get('coach_id')
         with connection.cursor() as cursor:
@@ -1274,7 +1380,9 @@ class CoachCoursesView(View):
         return JsonResponse({"coach_courses": course_data})
 
 #todo
+@method_decorator(csrf_exempt, name='dispatch')
 class LifeguardScheduleView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
         with connection.cursor() as cursor:
@@ -1293,7 +1401,9 @@ class LifeguardScheduleView(View):
         return JsonResponse({"schedule": schedule_data})
 
 #todo
+@method_decorator(csrf_exempt, name='dispatch')
 class LifeguardUpcomingHoursView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
         with connection.cursor() as cursor:
@@ -1314,7 +1424,9 @@ class LifeguardUpcomingHoursView(View):
         return JsonResponse({"upcoming_hours": shift_data})
 
 #todo
+@method_decorator(csrf_exempt, name='dispatch')
 class BookSlotLifeguardView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         lifeguard_id = data.get('lifeguard_id')
@@ -1330,7 +1442,9 @@ class BookSlotLifeguardView(View):
         return JsonResponse({"message": "Slot booked successfully"})
 
 #todo
+@method_decorator(csrf_exempt, name='dispatch')
 class UpcomingPoolBookingsView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM pool_bookings WHERE booking_time >= CURRENT_TIMESTAMP")
@@ -1347,7 +1461,9 @@ class UpcomingPoolBookingsView(View):
         ]
         return JsonResponse({"upcoming_bookings": booking_data})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class GetAccountMoneyView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         user_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
@@ -1356,7 +1472,9 @@ class GetAccountMoneyView(View):
     
         return JsonResponse({"account_money": balance[0]})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class WithdrawMoneyView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
@@ -1373,7 +1491,9 @@ class WithdrawMoneyView(View):
         
         return JsonResponse({"message": "Withdrawal successful"})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DepositMoneyView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
@@ -1384,7 +1504,9 @@ class DepositMoneyView(View):
         
         return JsonResponse({"message": "Deposit successful"}, status=200)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class AddCafeItemToCartView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
@@ -1399,7 +1521,9 @@ class AddCafeItemToCartView(View):
 
         return JsonResponse({"message": "Item added to cart successfully"})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class RemoveCafeItemFromCartView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
@@ -1421,7 +1545,9 @@ class RemoveCafeItemFromCartView(View):
 
         return JsonResponse({"message": "Item removed from cart successfully"})
        
+@method_decorator(csrf_exempt, name='dispatch')
 class BuyCafeItemView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
@@ -1455,7 +1581,9 @@ class BuyCafeItemView(View):
             )
             
         return JsonResponse({"message": "Item removed from cart successfully"})
+@method_decorator(csrf_exempt, name='dispatch')
 class AddCourseToCartView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
@@ -1469,7 +1597,9 @@ class AddCourseToCartView(View):
 
         return JsonResponse({"message": "Course added to cart successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class RemoveCourseFromCartView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         purchaser_id = data.get("purchaser_id")
@@ -1484,7 +1614,9 @@ class RemoveCourseFromCartView(View):
         return JsonResponse({"message": "Course removed from cart successfully"})
         
 
+@method_decorator(csrf_exempt, name='dispatch')
 class WithdrawCourseView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         swimmer_id = data.get("swimmer_id")
@@ -1498,7 +1630,9 @@ class WithdrawCourseView(View):
 
         return JsonResponse({"message": "Successfully withdrawn from the course"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class FinishCourseView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         course_id = data.get("course_id")
@@ -1523,7 +1657,9 @@ class FinishCourseView(View):
         return JsonResponse({"message": "Course marked as finished successfully"})
     
 
+@method_decorator(csrf_exempt, name='dispatch')
 class WithdrawPersonalTrainingView(View):
+    permission_classes = [AllowAny]
     def post(self, request):   
         data = json.loads(request.body)
         swimmer_id = data.get("swimmer_id")
@@ -1537,7 +1673,9 @@ class WithdrawPersonalTrainingView(View):
 
         return JsonResponse({"message": "Successfully withdrawn from the personal training session"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class FinishPersonalTrainingView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         training_id = data.get("training_id")
@@ -1551,7 +1689,9 @@ class FinishPersonalTrainingView(View):
 
         return JsonResponse({"message": "Personal training session marked as finished successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class PreviousCoursesView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         swimmer_id = request.GET.get("swimmer_id")
         
@@ -1579,7 +1719,9 @@ class PreviousCoursesView(View):
             
         return JsonResponse({"previous_courses": previous_courses})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class PasswordChangeEmailView(View):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
         recipient_email = data.get("email")
@@ -1592,7 +1734,9 @@ class PasswordChangeEmailView(View):
         send_mail(subject, message, from_email, recipient_list)
         return JsonResponse({"message": "Mail sended successfully"})
     
+@method_decorator(csrf_exempt, name='dispatch')
 class GetAllBuyingHistoryView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM buying_history GROUP BY purchaser_id")
@@ -1612,7 +1756,9 @@ class GetAllBuyingHistoryView(View):
             buying_history_data.append(buying_history)
         return JsonResponse({"buying_history": buying_history_data})
         
+@method_decorator(csrf_exempt, name='dispatch')
 class GetUserBuyingHistoryView(View):
+    permission_classes = [AllowAny]
     def get(self, request):
         user_id = request.GET.get('user_id')
         with connection.cursor() as cursor:
