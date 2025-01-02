@@ -27,7 +27,7 @@ CREATE TABLE worker (
     balance INT,
     FOREIGN KEY (worker_id) REFERENCES all_users(user_id),
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
-    check(gender in ('male', 'female'))
+    check(gender in ('Male', 'Female'))
 );
 
 CREATE TABLE coach (
@@ -78,7 +78,7 @@ CREATE TABLE swimmer (
     membership_status VARCHAR(255),
     total_money INT,
     FOREIGN KEY (swimmer_id) REFERENCES all_users(user_id),
-    check(availability in ('beginner', 'intermediate', 'advanced'))
+    check(swimming_proficiency in ('Beginner', 'Intermediate', 'Advanced'))
 );
 
 CREATE TABLE member_swimmer(

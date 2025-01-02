@@ -24,7 +24,6 @@ class LoginView(View):
         data = json.loads(request.body)
         username = data.get('username')
         password = data.get('password')
-
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM all_users WHERE username=%s AND password=%s", [username, password])
             user = cursor.fetchone()
@@ -32,16 +31,17 @@ class LoginView(View):
         if user:
             user_id = user[0]
             request.session['user_id'] = user_id
-
+            print(user)
             with connection.cursor() as cursor:
                 cursor.execute("SELECT * FROM member_swimmer WHERE swimmer_id=%s", [user_id])
                 swimmer = cursor.fetchone()
+                
                 if swimmer:
                     return JsonResponse({"user_role": "member", "user_id": user_id}, status=200)
 
                 cursor.execute("SELECT * FROM coach WHERE coach_id=%s", [user_id])
                 coach = cursor.fetchone()
-                if coach:
+                if coach:                  
                     return JsonResponse({"user_role": "coach", "user_id": user_id}, status=200)
 
                 cursor.execute("SELECT * FROM lifeguard WHERE lifeguard_id=%s", [user_id])
@@ -108,9 +108,9 @@ class RegisterView(View):
         elif new_user_id and  user_type == "3":  # Lifeguard
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO worker (worker_id, pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, [new_user_id, pool_id, 0, 0, gender, "", swim_proficiency, ""])
+                    INSERT INTO worker (worker_id, pool_id, age, gender, phone_number,qualifications,balance)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, [new_user_id, pool_id, 0, gender, "","", 0]) 
 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -121,9 +121,9 @@ class RegisterView(View):
         elif new_user_id and user_type == "4":  # Coach
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO worker (worker_id, pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, [new_user_id, pool_id, 0, 0, gender, "", swim_proficiency, ""]) 
+                    INSERT INTO worker (worker_id, pool_id, age, gender, phone_number,qualifications,balance)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, [new_user_id, pool_id, 0, gender, "","", 0]) 
 
             with connection.cursor() as cursor:
                 cursor.execute("""

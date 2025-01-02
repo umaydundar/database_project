@@ -75,6 +75,7 @@ body, html, #root {
     font-size: 16px;
     background: transparent;
     transition: border-color 0.3s;
+    color: var(--text-color);
 }
 
 .input-field:focus {
