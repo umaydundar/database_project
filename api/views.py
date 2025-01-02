@@ -751,45 +751,45 @@ class DeleteUserView(View):
         user_id = request.GET.get('user_id')
         
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM all_users WHERE id = %s", [user_id])
-            user_type = cursor.fetchone()[7]
+            cursor.execute("SELECT * FROM all_users WHERE user_id = %s", [user_id])
+            user_type = cursor.fetchone()[6]
             
         with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM all_users WHERE id = %s", [user_id])
+            cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id])
             
         if(user_type == "1"):
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM swimmer WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM swimmer WHERE swimmer_id = %s", [user_id])
                 
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM nonmember_swimmer WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM nonmember_swimmer WHERE swimmer_id = %s", [user_id])
             
         elif(user_type == "2"):
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM swimmer WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM swimmer WHERE swimmer_id = %s", [user_id])
             
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM member_swimmer WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM member_swimmer WHERE swimmer_id = %s", [user_id])
             
         elif(user_type == "3"):
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM worker WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM worker WHERE worker_id = %s", [user_id])
                 
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM lifeguard WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM lifeguard WHERE lifeguard_id = %s", [user_id])
              
         elif(user_type == "4"):
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM worker WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM worker WHERE worker_id = %s", [user_id])
             
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM coach WHERE id = %s", [user_id])
+                cursor.execute("DELETE FROM coach WHERE coach_id = %s", [user_id])
                 
         else: #(user_type == "5")
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM administrator WHERE id = %s", [user_id])
-    
-        return JsonResponse({"message": "User deleted successfully"})
+                cursor.execute("DELETE FROM administrator WHERE administrator_id = %s", [user_id])
+                
+         return JsonResponse({"message": "User deleted successfully"})
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateMemberProfileView(View):
