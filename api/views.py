@@ -1028,22 +1028,42 @@ class GetNonmemberSwimmerView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class GetCoachView(View):
     permission_classes = [AllowAny]
+
     def get(self, request):
-        coach_id = request.GET.get('coach_id')
+        username = request.GET.get('username')
+        if not username:
+            return JsonResponse({"error": "Username is required"}, status=400)
+
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM coach WHERE coach_id = %s", [coach_id])
+            cursor.execute("SELECT user_id FROM all_users WHERE username = %s", [username])
             user = cursor.fetchone()
 
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT balance FROM worker WHERE worker_id = %s", [user[0]])
+            balance = cursor.fetchone()        
+        
+        
         if user:
-            user_data = {
-                "coach_id": user[0],
-                "avg_rating": user[1],
-                "coach_ranking": user[2],
-                "specialties": user[3],
-            }
-            return JsonResponse({"coach": user_data})
+            user_id = user[0]
+
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT * FROM coach WHERE coach_id = %s", [user_id])
+                coach = cursor.fetchone()
+
+            if coach:
+                coach_data = {
+                    "coach_id": coach[0],
+                    "avg_rating": coach[1],
+                    "coach_ranking": coach[2],
+                    "specialties": coach[3],
+                    "balance": balance,
+                }
+
+                return JsonResponse({"coach": coach_data})
+            else:
+                return JsonResponse({"error": "Coach not found"}, status=404)
         else:
-            return JsonResponse({"error": "Coach not found"}, status=404)
+            return JsonResponse({"error": "User not found"}, status=404)
         
     
 @method_decorator(csrf_exempt, name='dispatch')

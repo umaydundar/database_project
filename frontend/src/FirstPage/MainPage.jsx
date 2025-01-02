@@ -1,14 +1,15 @@
 import axios from "axios";
 import "./MainPage.css";
 import { useNavigate } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useUser } from "../UserContext";
 
 
 const Main = () => {
     const navigate = useNavigate();
-    const [username, setUsername] = useState(""); // State for username
-    const [password, setPassword] = useState(""); // State for password
-    const [csrfToken, setCSRFToken] = useState(null);
+    const { setUsername: setGlobalUsername } = useUser(); 
+    const [username, setUsername] = useState(""); 
+    const [password, setPassword] = useState(""); 
     const [error, setError] = useState("");
 
     const handleRegisterClick = () => {
@@ -24,39 +25,29 @@ const Main = () => {
         try {
             const response = await axios.post(
                 "http://127.0.0.1:8000/api/login/",
-                { username, password }, // Request body
+                { username, password },
                 {
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
                     },
-                    withCredentials: true, // Ensure cookies are sent
+                    withCredentials: true,
                 }
             );
 
-            console.log(response);
             if (response.status === 200) {
-                    const userRole = response.data.user_role;
-                    console.log("", userRole);
-                    if (userRole === "non-member") {
-                        navigate("/non-member/schedule");
-                    } else if (userRole === "member") {
-                        navigate("/member/schedule");
-                    } else if (userRole === "coach") {
-                        navigate("/coach/schedule");
-                    } else if (userRole === "admin") {
-                        navigate("/admin/report");
-                    } else if (userRole === "lifeguard") {
-                        navigate("/lifeguard/upcoming-hours");
-                    } else {
-                        navigate("/");
-                    }
-                } 
-                else 
-                {
-                    const result = await response.json();
-                    setError(result.error || "Failed to change password.");
-                }
-            } catch (err) {
+                setGlobalUsername(username); // Save the username globally
+                const userRole = response.data.user_role;
+
+                if (userRole === "non-member") navigate("/non-member/schedule");
+                else if (userRole === "member") navigate("/member/schedule");
+                else if (userRole === "coach") navigate("/coach/schedule");
+                else if (userRole === "admin") navigate("/admin/report");
+                else if (userRole === "lifeguard") navigate("/lifeguard/upcoming-hours");
+                else navigate("/");
+            } else {
+                setError("Login failed");
+            }
+        } catch (err) {
             setError("An unexpected error occurred.");
         }
     };
@@ -73,7 +64,7 @@ const Main = () => {
                             className="input-field"
                             placeholder="Username"
                             value={username}
-                            onChange={(e) => setUsername(e.target.value)} // Bind state
+                            onChange={(e) => setUsername(e.target.value)}
                             required
                         />
                     </div>
@@ -84,7 +75,7 @@ const Main = () => {
                             className="input-field"
                             placeholder="Password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)} // Bind state
+                            onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>

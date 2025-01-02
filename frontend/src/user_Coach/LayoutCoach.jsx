@@ -1,20 +1,50 @@
-import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom"; // No Outlet needed here
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./LayoutCoach.css";
 import "boxicons/css/boxicons.min.css";
+import { useUser } from "../UserContext";
+import axios from "axios";
 
 const LayoutCoach = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { username } = useUser();
+    const [totalMoney, setTotalMoney] = useState(1500);
+    const [generalRating, setGeneralRating] = useState(0); 
 
-    const [totalMoney] = useState(1500);
-    const [generalRating] = useState(4.5);
+    useEffect(() => {
+        const fetchCoach = async () => {
+            try {
+                const response = await axios.get(
+                    "http://127.0.0.1:8000/api/get_coach/",
+                    {
+                        params: { username },
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        withCredentials: true,
+                    }
+                );
+                if (response.status === 200) {
+                    setGeneralRating(response.data.coach.avg_rating);
+                    setTotalMoney(response.data.coach.balance); 
+                }
+                console.log(response);
+            } catch (error) {
+                console.error("Failed to fetch coach data:", error);
+            }
+        };
+
+        if (username) {
+            fetchCoach();
+        }
+    }, [username]);
 
     const handleLogout = () => {
         localStorage.removeItem("userRole");
         localStorage.removeItem("userPoints");
         localStorage.removeItem("balance");
-        navigate("/"); // Redirect to Home or Login page
+        navigate("/");
     };
 
     const navigationItems = [
@@ -26,27 +56,24 @@ const LayoutCoach = ({ children }) => {
 
     return (
         <div className="coach-layout">
-            {/* Sidebar */}
             <div className="sidebar always-open">
                 <div className="sidebar-content">
                     <div className="logo">
                         <i className="bx bx-trophy icon"></i>
-                        <span className="logo-name">Welcome, Coach</span>
+                        <span className="logo-name">Welcome, {username}</span>
                     </div>
-
-                    {/* Balance View */}
                     <div className="balance-container">
                         <div className="balance-view">
                             <span className="balance-label">Your Rating:</span>
-                            <span className="balance-amount">{generalRating.toFixed(1)} / 5</span>
+                            <span className="balance-amount">
+                                {generalRating + "/5"}
+                            </span>
                         </div>
                         <div className="balance-view">
                             <span className="balance-label">Balance:</span>
                             <span className="balance-amount">{totalMoney} TL</span>
                         </div>
                     </div>
-
-                    {/* Navigation Links */}
                     <ul className="lists">
                         {navigationItems.map((item) => (
                             <li
@@ -60,8 +87,6 @@ const LayoutCoach = ({ children }) => {
                             </li>
                         ))}
                     </ul>
-
-                    {/* Logout Button */}
                     <div className="bottom-content">
                         <li className="list">
                             <button onClick={handleLogout} className="nav-link">
@@ -72,8 +97,6 @@ const LayoutCoach = ({ children }) => {
                     </div>
                 </div>
             </div>
-
-            {/* Main Content */}
             <div className="main-content">{children}</div>
         </div>
     );
