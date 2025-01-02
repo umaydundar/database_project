@@ -1378,26 +1378,43 @@ class CoachCoursesView(View):
         
         return JsonResponse({"coach_courses": course_data})
 
-#todo
 @method_decorator(csrf_exempt, name='dispatch')
 class LifeguardScheduleView(View):
     permission_classes = [AllowAny]
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM lifeguard_schedule WHERE lifeguard_id=%s", [lifeguard_id])
-            schedule = cursor.fetchall()
-        
-        schedule_data = [
-            {
-                "shift_id": shift[0],
-                "lifeguard_id": shift[1],
-                "start_time": shift[2],
-                "end_time": shift[3],
-                "pool_id": shift[4]
-            } for shift in schedule
-        ]
-        return JsonResponse({"schedule": schedule_data})
+        if not lifeguard_id:
+            return JsonResponse({"error": "Lifeguard ID is required"}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT * FROM course_schedule WHERE lifeguard_id=%s", 
+                    [lifeguard_id]
+                )
+                schedule = cursor.fetchall()
+
+            if not schedule:
+                return JsonResponse({"schedule": [], "message": "No schedule found for the lifeguard"}, status=200)
+
+            schedule_data = [
+                {
+                    "course_schedule_id": shift[0],
+                    "course_id": shift[1],
+                    "swimmer_id": shift[2],
+                    "lifeguard_id": shift[3],
+                    "start_date": shift[4],
+                    "end_date": shift[5],
+                    "start_time": shift[6],
+                    "end_time": shift[7],
+                    "day": shift[8],
+                    "status": shift[9],
+                }
+                for shift in schedule
+            ]
+            return JsonResponse({"schedule": schedule_data}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
 
 #todo
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1405,40 +1422,91 @@ class LifeguardUpcomingHoursView(View):
     permission_classes = [AllowAny]
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT * FROM lifeguard_schedule WHERE lifeguard_id=%s AND start_time >= CURRENT_TIMESTAMP",
-                [lifeguard_id]
-            )
-            shifts = cursor.fetchall()
-        
-        shift_data = [
-            {
-                "shift_id": shift[0],
-                "start_time": shift[2],
-                "end_time": shift[3],
-                "pool_id": shift[4]
-            } for shift in shifts
-        ]
-        return JsonResponse({"upcoming_hours": shift_data})
+        if not lifeguard_id:
+            return JsonResponse({"error": "Lifeguard ID is required"}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT * FROM course_schedule 
+                    WHERE lifeguard_id=%s 
+                    AND (start_date > CURRENT_DATE OR (start_date = CURRENT_DATE AND start_time >= CURRENT_TIME))
+                    """,
+                    [lifeguard_id]
+                )
+                shifts = cursor.fetchall()
+
+            if not shifts:
+                return JsonResponse({"upcoming_hours": [], "message": "No upcoming hours for the lifeguard"}, status=200)
+
+            shift_data = [
+                {
+                    "course_schedule_id": shift[0],
+                    "course_id": shift[1],
+                    "swimmer_id": shift[2],
+                    "lifeguard_id": shift[3],
+                    "start_date": shift[4],
+                    "end_date": shift[5],
+                    "start_time": shift[6],
+                    "end_time": shift[7],
+                    "day": shift[8],
+                    "status": shift[9],
+                }
+                for shift in shifts
+            ]
+            return JsonResponse({"upcoming_hours": shift_data}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
 
 #todo
 @method_decorator(csrf_exempt, name='dispatch')
 class BookSlotLifeguardView(View):
     permission_classes = [AllowAny]
     def post(self, request):
-        data = json.loads(request.body)
-        lifeguard_id = data.get('lifeguard_id')
-        pool_id = data.get('pool_id')
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
+        try:
+            data = json.loads(request.body)
+            course_id = data.get('course_id')
+            lifeguard_id = data.get('lifeguard_id')
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            start_time = data.get('start_time')
+            end_time = data.get('end_time')
+            day = data.get('day')
 
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO lifeguard_schedule (lifeguard_id, start_time, end_time, pool_id) VALUES (%s, %s, %s, %s)",
-                [lifeguard_id, start_time, end_time, pool_id]
-            )
-        return JsonResponse({"message": "Slot booked successfully"})
+            if not all([course_id, lifeguard_id, start_date, end_date, start_time, end_time, day]):
+                return JsonResponse({"error": "All fields are required"}, status=400)
+
+            if start_date > end_date or (start_date == end_date and start_time >= end_time):
+                return JsonResponse({"error": "Invalid date or time range"}, status=400)
+
+            # Check for overlapping shifts
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT * FROM course_schedule 
+                    WHERE lifeguard_id=%s 
+                    AND ((start_date = %s AND start_time < %s AND end_time > %s) OR (start_date <= %s AND end_date >= %s))
+                    """,
+                    [lifeguard_id, start_date, end_time, start_time, end_date, start_date]
+                )
+                overlap = cursor.fetchone()
+                if overlap:
+                    return JsonResponse({"error": "Schedule overlaps with an existing shift"}, status=400)
+
+            # Insert the new schedule
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO course_schedule (course_id, lifeguard_id, start_date, end_date, start_time, end_time, day, status) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [course_id, lifeguard_id, start_date, end_date, start_time, end_time, day, "not-enrolled"]
+                )
+            return JsonResponse({"message": "Slot booked successfully"}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
+
 
 #todo
 @method_decorator(csrf_exempt, name='dispatch')

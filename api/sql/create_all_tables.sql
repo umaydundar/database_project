@@ -8,7 +8,7 @@ CREATE TABLE all_users (
     user_type VARCHAR(255)
 );
 
-CREATE TABLE swimming_pool(
+CREATE TABLE swimming_pool (
     pool_id SERIAL PRIMARY KEY,
     number_of_lanes INT NOT NULL,
     opening_hour TIME NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE lane(
     FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),
     UNIQUE (lane_id),
     PRIMARY KEY (lane_id, pool_id),
-    check(availability in ('available', 'added-to-cart', 'in-use'))
+    CHECK (availability IN ('available', 'added-to-cart', 'in-use'))
 );
 
 CREATE TABLE swimmer (
@@ -108,7 +108,7 @@ CREATE TABLE report (
     FOREIGN KEY (admin_id) REFERENCES administrator(administrator_id)
 );
 
-CREATE TABLE course(
+CREATE TABLE course (
     course_id SERIAL PRIMARY KEY,
     course_name VARCHAR(255) NOT NULL,
     course_image BYTEA,
@@ -128,7 +128,7 @@ CREATE TABLE course_schedule(
     course_schedule_id SERIAL,
     course_id INT,
     swimmer_id INT,
-    coach_id INT,
+    lifeguard_id INT,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     start_time TIME NOT NULL,
@@ -136,35 +136,34 @@ CREATE TABLE course_schedule(
     day VARCHAR(255),
     status VARCHAR(255),
     FOREIGN KEY (swimmer_id) REFERENCES swimmer(swimmer_id),
-    FOREIGN KEY (coach_id) REFERENCES coach(coach_id),
+    FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),
     FOREIGN KEY (course_id) REFERENCES course(course_id),
     PRIMARY KEY (course_schedule_id, course_id),
-    check(status in ('not-enrolled', 'in-progress', 'withdrawn', 'finished', 'cancelled'))
+    CHECK (status IN ('not-enrolled', 'in-progress', 'withdrawn', 'finished', 'cancelled'))
 );
 
-CREATE TABLE personal_training(
+CREATE TABLE personal_training (
     training_id SERIAL PRIMARY KEY,
     FOREIGN KEY (training_id) REFERENCES course(course_id)
 );
 
-CREATE TABLE swimming_lesson(
+CREATE TABLE swimming_lesson (
     lesson_id SERIAL PRIMARY KEY,
     capacity INT NOT NULL,
     is_full BOOLEAN NOT NULL,
     skill_level TEXT,
     FOREIGN KEY (lesson_id) REFERENCES course(course_id),
-    check(skill_level in ('beginner', 'intermediate', 'advanced'))
+    CHECK (skill_level IN ('beginner', 'intermediate', 'advanced'))
 );
 
-
-CREATE TABLE cafe(
+CREATE TABLE cafe (
     cafe_id SERIAL PRIMARY KEY,
     number_of_items INT,
     pool_id INT,
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id)
 );
 
-CREATE TABLE cafe_item(
+CREATE TABLE cafe_item (
     cafe_item_id SERIAL,
     cafe_id INT NOT NULL,
     item_image BYTEA,
@@ -179,7 +178,7 @@ CREATE TABLE cafe_item(
 
 CREATE TABLE rating(
     rating_id SERIAL,
-    swimmer_id INT NOT NULL, 
+    swimmer_id INT NOT NULL,
     coach_id INT NOT NULL,
     course_id INT NOT NULL,
     rating INT CHECK (rating BETWEEN 1 AND 5),
@@ -192,7 +191,7 @@ CREATE TABLE rating(
 
 CREATE TABLE comment(
     comment_id SERIAL,
-    swimmer_id INT NOT NULL, 
+    swimmer_id INT NOT NULL,
     coach_id INT NOT NULL,
     course_id INT NOT NULL,
     comment VARCHAR(255),
@@ -203,7 +202,7 @@ CREATE TABLE comment(
     PRIMARY KEY (comment_id, course_id)
 );
 
-CREATE TABLE cart(
+CREATE TABLE cart (
     cart_id SERIAL PRIMARY KEY,
     purchaser_id INT NOT NULL,
     course_id INT,
@@ -230,15 +229,15 @@ CREATE TABLE private_booking (
     PRIMARY KEY (private_booking_id, swimmer_id)
 );
 
-CREATE TABLE teaches(
-	teaches_id SERIAL PRIMARY KEY,
-	lesson_id INT,
-	coach_id INT,
+CREATE TABLE teaches (
+    teaches_id SERIAL PRIMARY KEY,
+    lesson_id INT,
+    coach_id INT,
     FOREIGN KEY (lesson_id) REFERENCES swimming_lesson(lesson_id),
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id)
 );
 
-CREATE TABLE buying_history(
+CREATE TABLE buying_history (
     history_id SERIAL PRIMARY KEY,
     purchaser_id INT NOT NULL,
     course_id INT,
