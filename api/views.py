@@ -67,8 +67,10 @@ class RegisterView(View):
         name = data.get('name')
         surname =  data.get('surname')
         password = data.get('password')
-        user_type = data.get('user-type')
+        user_type = data.get('user_type')
         swim_proficiency = data.get('swim_proficiency')
+        gender = data.get('gender')
+        pool_id = data.get('pool_id')
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT user_id FROM all_users WHERE username=%s", [username])
@@ -83,14 +85,19 @@ class RegisterView(View):
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING user_id
             """, [name, surname, username, password, user_type])
-            new_user_id = cursor.fetchone()[0]
+            new_user = cursor.fetchone()
+            print(new_user)
+            new_user_id = new_user[0]
+            
+            print("user_id is " + str(new_user_id))
+            print(" user_type is " + str(user_type))
 
         if new_user_id and user_type == "1":  # Swimmer
             with connection.cursor() as cursor:
                 cursor.execute("""
                     INSERT INTO swimmer (swimmer_id, phone_number, age, gender, swimming_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
-                """, [new_user_id, "", 0, "", swim_proficiency, 0, 0, 0,  "nonmember"]) 
+                """, [new_user_id, "", 0, gender, swim_proficiency, 0, 0, 0,  "nonmember"]) 
                 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -103,7 +110,7 @@ class RegisterView(View):
                 cursor.execute("""
                     INSERT INTO worker (worker_id, pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, [new_user_id, 0, 0, 0, "", "", "", ""])
+                """, [new_user_id, pool_id, 0, 0, gender, "", swim_proficiency, ""])
 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -116,7 +123,7 @@ class RegisterView(View):
                 cursor.execute("""
                     INSERT INTO worker (worker_id, pool_id, salary, age, gender, phone_number, swim_proficiency, qualifications)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, [new_user_id, 0, 0, 0, "", "", "", ""]) 
+                """, [new_user_id, pool_id, 0, 0, gender, "", swim_proficiency, ""]) 
 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -789,7 +796,7 @@ class DeleteUserView(View):
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM administrator WHERE administrator_id = %s", [user_id])
                 
-         return JsonResponse({"message": "User deleted successfully"})
+        return JsonResponse({"message": "User deleted successfully"})
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateMemberProfileView(View):
@@ -1568,6 +1575,25 @@ class WithdrawMoneyView(View):
             cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [amount, swimmer_id])
         
         return JsonResponse({"message": "Withdrawal successful"})
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class WithdrawMoneyWorkerView(View):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        data = json.loads(request.body)
+        worker_id = data.get('worker_id')
+        amount = float(data.get('amount'))
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT balance FROM worker WHERE worker_id=%s", [worker_id])
+            total_money = cursor.fetchone()
+            
+            if not total_money or total_money[0] < amount:
+                return JsonResponse({"error": "Insufficient funds or user not found"}, status=400)
+
+            cursor.execute("UPDATE worker SET balance = balance - %s WHERE worker_id = %s", [amount, worker_id])
+        
+        return JsonResponse({"message": "Withdrawal successful"})
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DepositMoneyView(View):
@@ -1579,6 +1605,19 @@ class DepositMoneyView(View):
 
         with connection.cursor() as cursor:
             cursor.execute("UPDATE swimmer SET total_money = total_money + %s WHERE swimmer_id = %s", [amount, swimmer_id])
+        
+        return JsonResponse({"message": "Deposit successful"}, status=200)
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class DepositMoneyWorkerView(View):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        data = json.loads(request.body)
+        worker_id = data.get('worker_id')
+        amount = float(data.get('amount'))
+
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE worker SET balance = balance + %s WHERE worker_id = %s", [amount, worker_id])
         
         return JsonResponse({"message": "Deposit successful"}, status=200)
 

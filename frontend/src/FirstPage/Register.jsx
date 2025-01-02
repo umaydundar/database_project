@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 const RegisterPage = () => {
     const [role, setRole] = useState("");
+    const [poolId, setPoolId] = useState()
     const [sex, setSex] = useState("");
     const [swimmingProficiency, setSwimmingProficiency] = useState("");
     const [inputsVisible, setInputsVisible] = useState(false);
@@ -20,13 +21,14 @@ const RegisterPage = () => {
         e.preventDefault();
         e.preventDefault();
         const formData = {
-            role,
-            sex,
-            swimmingProficiency,
-            firstName: e.target.firstName.value,
-            lastName: e.target.lastName.value,
-            username: e.target.username.value,
-            password: e.target.password.value,
+            "username": e.target.username.value,
+            "name": e.target.firstName.value,
+            "surname": e.target.lastName.value,
+            "password": e.target.password.value,
+            "user_type": role,
+            "gender": sex,
+            "swim_proficiency": swimmingProficiency,
+            "pool_id": poolId,
         };
 
         console.log(formData);
@@ -73,9 +75,9 @@ const RegisterPage = () => {
                             <option value="" disabled>
                                 Select a role
                             </option>
-                            <option value="Swimmer">Swimmer</option>
-                            <option value="Coach">Coach</option>
-                            <option value="Lifeguard">Lifeguard</option>
+                            <option value="1">Swimmer</option>
+                            <option value="4">Coach</option>
+                            <option value="3">Lifeguard</option>
                         </select>
                     </div>
 
@@ -159,7 +161,7 @@ const RegisterPage = () => {
                             </div>
 
                             {/* Swimming Proficiency (only for swimmers) */}
-                            {role === "Swimmer" && (
+                            {(role === "Swimmer"  || role === "1" )&& (
                                 <div className="role-selection">
                                     <label htmlFor="swimmingProficiency" className="role-label">
                                         Swimming Proficiency:
@@ -177,6 +179,30 @@ const RegisterPage = () => {
                                         <option value="Beginner">Beginner</option>
                                         <option value="Intermediate">Intermediate</option>
                                         <option value="Advanced">Advanced</option>
+                                    </select>
+                                </div>
+                            )}
+
+
+                            {/* Swimming Proficiency (only for swimmers) */}
+                            {(role != "Swimmer"  || role != "1" )&& (
+                                <div className="pool-selection">
+                                    <label htmlFor="poolId" className="pool-label">
+                                        Swimming Proficiency:
+                                    </label>
+                                    <select
+                                        id="pool_id"
+                                        className="pool-dropdown"
+                                        value={poolId}
+                                        onChange={(e) => setPoolId(e.target.value)}
+                                        required
+                                    >
+                                        <option value="" disabled>
+                                            Select Pool
+                                        </option>
+                                        <option value="1">Pool 1</option>
+                                        <option value="2">Pool 2</option>
+                                        <option value="3">Pool 3</option>
                                     </select>
                                 </div>
                             )}

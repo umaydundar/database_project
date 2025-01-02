@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Sidebar from './LayoutNonMember.jsx';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './ProfileNonMember.css';
 
 const Profile = () => {
@@ -15,6 +16,7 @@ const Profile = () => {
     const [editedData, setEditedData] = useState(initialUserData);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
@@ -60,6 +62,10 @@ const Profile = () => {
 
     const handleLogout = () => {
         alert('Logged out successfully!');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userPoints'); // Clear user points on logout
+        localStorage.removeItem('balance'); // Clear balance on logout
+        navigate('/'); // Redirect to Home or Login page
     };
 
     return (

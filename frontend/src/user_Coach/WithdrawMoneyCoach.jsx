@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import LayoutCoach from "./LayoutCoach"; // Ensure correct import
 import "./WithdrawMoneyCoach.css";
+import axios from "axios";
 
 const WithdrawMoney = () => {
   const [balance, setBalance] = useState(1500); // Initial balance
@@ -9,7 +10,7 @@ const WithdrawMoney = () => {
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (!amount || !iban) {
       setError("Please fill in all fields.");
       return;
@@ -33,13 +34,30 @@ const WithdrawMoney = () => {
     setError("");
     setIsProcessing(true);
 
-    setTimeout(() => {
-      setBalance((prevBalance) => prevBalance - amount);
-      setAmount("");
-      setIban("");
-      setIsProcessing(false);
-      alert(`Your withdrawal of ${amount} TL has been processed.`);
-    }, 2000); // Simulate processing time
+    try {
+      const response = await axios.post(
+          "http://127.0.0.1:8000/api/witdraw_money_worker/",
+          { worker_id, amount }, // Request body
+          {
+              headers: {
+                  "Content-Type": "application/json"
+              },
+              withCredentials: true, // Ensure cookies are sent
+          }
+      );
+
+      console.log(response);
+      if (response.status === 200) {
+            alert("Withdraw successful");
+          } 
+          else 
+          {
+              const result = await response.json();
+              setError(result.error || "Failed to withdraw money");
+          }
+      } catch (err) {
+      setError("An unexpected error occurred.");
+  }
   };
 
   return (
