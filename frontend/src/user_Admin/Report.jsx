@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import axios from "axios";
 import LayoutAdmin from "./LayoutAdmin"; // Import LayoutAdmin
 import "./Report.css"; // Ensure this CSS file exists
 
@@ -10,7 +11,11 @@ const ReportPage = () => {
         transactions: false,
         courses: false,
     });
-
+    const [reportData, setReportData] = useState({
+        users: [],
+        transactions: [],
+        courses: [],
+    });
     const [isGenerating, setIsGenerating] = useState(false);
 
     const handleCheckboxChange = (e) => {
@@ -21,14 +26,75 @@ const ReportPage = () => {
         }));
     };
 
-    const generatePDF = () => {
+    const fetchData = async () => {
         const { users, transactions, courses } = selectedParameters;
+
+        try {
+            const fetchPromises = [];
+            if (users) {
+                fetchPromises.push(
+                    axios
+                        .get("http://127.0.0.1:8000/api/users/")
+                        .then((response) => ({
+                            key: "users",
+                            data: response.data.users || [],
+                        }))
+                );
+            }
+            if (transactions) {
+                fetchPromises.push(
+                    axios
+                        .get("http://127.0.0.1:8000/api/get_buying_history_all_users/")
+                        .then((response) => ({
+                            key: "transactions",
+                            data: response.data.buying_history || [],
+                        }))
+                );
+            }
+            if (courses) {
+                fetchPromises.push(
+                    axios
+                        .get("http://127.0.0.1:8000/api/all_courses/")
+                        .then((response) => ({
+                            key: "courses",
+                            data: response.data.courses || [],
+                        }))
+                );
+            }
+
+            const results = await Promise.all(fetchPromises);
+            const newReportData = {};
+            results.forEach(({ key, data }) => {
+                newReportData[key] = data;
+            });
+            setReportData((prev) => ({ ...prev, ...newReportData }));
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            alert("An error occurred while fetching report data. Please check the console for details.");
+        }
+    };
+
+    const generatePDF = async () => {
+        const { users, transactions, courses } = selectedParameters;
+
         if (!users && !transactions && !courses) {
             alert("Please select at least one parameter to include in the report.");
             return;
         }
 
         setIsGenerating(true);
+
+        await fetchData();
+
+        if (
+            (!users || reportData.users.length === 0) &&
+            (!transactions || reportData.transactions.length === 0) &&
+            (!courses || reportData.courses.length === 0)
+        ) {
+            alert("No data available for the selected parameters.");
+            setIsGenerating(false);
+            return;
+        }
 
         const reportContent = document.createElement("div");
         reportContent.style.width = "210mm"; // A4 width
@@ -38,7 +104,7 @@ const ReportPage = () => {
         reportContent.style.color = "#000";
         reportContent.style.fontFamily = "Arial, sans-serif";
 
-        if (users) {
+        if (users && reportData.users.length) {
             const usersSection = document.createElement("div");
             usersSection.innerHTML = `
                 <h2>Users Report</h2>
@@ -51,16 +117,17 @@ const ReportPage = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td>Alice Johnson</td>
-                            <td>alice@example.com</td>
-                        </tr>
-                        <tr>
-                            <td>2</td>
-                            <td>Bob Smith</td>
-                            <td>bob@example.com</td>
-                        </tr>
+                        ${reportData.users
+                .map(
+                    (user) => `
+                                <tr>
+                                    <td>${user.user_id || "N/A"}</td>
+                                    <td>${user.forename || "N/A"} ${user.surname || ""}</td>
+                                    <td>${user.username || "N/A"}</td>
+                                </tr>
+                            `
+                )
+                .join("")}
                     </tbody>
                 </table>
                 <br/>
@@ -68,7 +135,7 @@ const ReportPage = () => {
             reportContent.appendChild(usersSection);
         }
 
-        if (transactions) {
+        if (transactions && reportData.transactions.length) {
             const transactionsSection = document.createElement("div");
             transactionsSection.innerHTML = `
                 <h2>Transactions Report</h2>
@@ -77,23 +144,23 @@ const ReportPage = () => {
                         <tr>
                             <th>Transaction ID</th>
                             <th>User</th>
-                            <th>Amount</th>
+                            <th>Course</th>
                             <th>Date</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>1001</td>
-                            <td>Alice Johnson</td>
-                            <td>$50</td>
-                            <td>2024-12-01</td>
-                        </tr>
-                        <tr>
-                            <td>1002</td>
-                            <td>Bob Smith</td>
-                            <td>$75</td>
-                            <td>2024-12-05</td>
-                        </tr>
+                        ${reportData.transactions
+                .map(
+                    (transaction) => `
+                                <tr>
+                                    <td>${transaction.history_id || "N/A"}</td>
+                                    <td>${transaction.purchaser_id || "N/A"}</td>
+                                    <td>${transaction.course_id || "N/A"}</td>
+                                    <td>${transaction.purchased_at || "N/A"}</td>
+                                </tr>
+                            `
+                )
+                .join("")}
                     </tbody>
                 </table>
                 <br/>
@@ -101,7 +168,7 @@ const ReportPage = () => {
             reportContent.appendChild(transactionsSection);
         }
 
-        if (courses) {
+        if (courses && reportData.courses.length) {
             const coursesSection = document.createElement("div");
             coursesSection.innerHTML = `
                 <h2>Courses Report</h2>
@@ -115,18 +182,18 @@ const ReportPage = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>CS101</td>
-                            <td>Introduction to Computer Science</td>
-                            <td>Dr. Emily Davis</td>
-                            <td>200</td>
-                        </tr>
-                        <tr>
-                            <td>SW202</td>
-                            <td>Software Engineering</td>
-                            <td>Prof. Michael Brown</td>
-                            <td>150</td>
-                        </tr>
+                        ${reportData.courses
+                .map(
+                    (course) => `
+                                <tr>
+                                    <td>${course.course_id || "N/A"}</td>
+                                    <td>${course.course_name || "N/A"}</td>
+                                    <td>${course.coach_name || "N/A"}</td>
+                                    <td>${course.enrollment || "N/A"}</td>
+                                </tr>
+                            `
+                )
+                .join("")}
                     </tbody>
                 </table>
                 <br/>
@@ -182,7 +249,7 @@ const ReportPage = () => {
                                 checked={selectedParameters.transactions}
                                 onChange={handleCheckboxChange}
                             />
-                            Include Transactions Information
+                            Include Buying History Information
                         </label>
                     </div>
                     <div className="form-group">

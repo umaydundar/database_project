@@ -8,6 +8,10 @@ const ManageUsers = () => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
 
+    // Modal state'leri
+    const [showModal, setShowModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+
     // Fetch users from the backend
     useEffect(() => {
         const fetchUsers = async () => {
@@ -34,7 +38,6 @@ const ManageUsers = () => {
     const handleDelete = async (userId) => {
         if (window.confirm("Are you sure you want to delete this user?")) {
             try {
-                // Option A: pass user_id as a query parameter
                 const response = await axios.delete(
                     `http://127.0.0.1:8000/api/delete_user/?user_id=${userId}`,
                     {
@@ -53,9 +56,19 @@ const ManageUsers = () => {
         }
     };
 
-    // (Optional) Handle viewing a user's profile
+    // "View Profile" butonuna tıklayınca modal'ı açar ve seçili kullanıcıyı kaydeder
     const handleViewProfile = (userId) => {
-        alert(`View profile for User ID: ${userId}`);
+        const foundUser = users.find((user) => user.user_id === userId);
+        if (foundUser) {
+            setSelectedUser(foundUser);
+            setShowModal(true);
+        }
+    };
+
+    // Modal'ı kapatma fonksiyonu
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setSelectedUser(null);
     };
 
     if (loading) {
@@ -118,6 +131,28 @@ const ManageUsers = () => {
                         </table>
                     </div>
                 </section>
+
+                {/* Modal */}
+                {showModal && selectedUser && (
+                    <div className="users-modal-overlay">
+                        <div className="users-modal-content">
+                            <h2>User Details</h2>
+                            <p><strong>ID:</strong> {selectedUser.user_id}</p>
+                            <p><strong>Name:</strong> {`${selectedUser.forename} ${selectedUser.surname}`}</p>
+                            <p><strong>Username:</strong> {selectedUser.username}</p>
+                            <p><strong>Role:</strong> {selectedUser.user_type}</p>
+
+                            {/* Burada istediğiniz ek alanları da gösterebilirsiniz
+                                Örneğin: user_image, email vb.
+                                <p><strong>Email:</strong> {selectedUser.email}</p>
+                            */}
+
+                            <button onClick={handleCloseModal} className="close-modal-button">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </LayoutAdmin>
     );

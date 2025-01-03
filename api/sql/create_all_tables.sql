@@ -125,19 +125,21 @@ CREATE TABLE course (
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id)
 );
 
-CREATE TABLE course_schedule(
+CREATE TABLE course_schedule (
     course_schedule_id SERIAL,
     course_id INT,
     swimmer_id INT,
     coach_id INT,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
+    day TEXT NOT NULL,
     status VARCHAR(255),
     FOREIGN KEY (swimmer_id) REFERENCES swimmer(swimmer_id),
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id),
     FOREIGN KEY (course_id) REFERENCES course(course_id),
     PRIMARY KEY (course_schedule_id, course_id),
-    CHECK (status IN ('not-enrolled', 'in-progress', 'withdrawn', 'finished', 'cancelled'))
+    CHECK (status IN ('not-enrolled', 'in-progress', 'withdrawn', 'finished', 'cancelled')),
+    CHECK (day IN ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
 );
 
 CREATE TABLE personal_training (
