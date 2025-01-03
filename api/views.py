@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from datetime import datetime, timedelta
 import base64
 import logging
 logger = logging.getLogger(__name__)
@@ -1501,64 +1502,118 @@ class WeeklyCoursesMemberView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DailyCoursesNonmemberView(View):
-    permission_classes = [AllowAny]
     def get(self, request):
         swimmer_id = request.GET.get('nonmember_id')
-        with connection.cursor() as cursor:
-            cursor.execute(
-                  cursor.execute("SELECT * FROM course_schedule JOIN course ON coach_id WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE  AND EXTRACT(DOW FROM CURRENT_DATE) = day", [member_id])
-                [swimmer_id],
-            )
-            courses = cursor.fetchall()
+        if not swimmer_id:
+            logger.error("Nonmember ID is missing.")
+            return JsonResponse({"error": "Nonmember ID is required."}, status=400)
 
-        course_data = [
-            {
-                "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[6],
-                "pool_id": course[7],
-                "lane_id": course[8],
-                "price": course[9]
-            }
-            for course in courses
-        ]
-        return JsonResponse({"daily_courses": course_data})
+        try:
+            with connection.cursor() as cursor:
+                logger.info(f"Fetching daily courses for nonmember_id: {swimmer_id}")
+                cursor.execute("""
+                    SELECT cs.course_id, c.course_name, c.course_image, c.coach_id, c.course_description, 
+                           c.restrictions, c.deadline, c.pool_id, c.lane_id, c.price 
+                    FROM course_schedule cs 
+                    JOIN course c ON cs.course_id = c.course_id 
+                    WHERE cs.swimmer_id = %s 
+                      AND cs.start_date <= CURRENT_DATE 
+                      AND cs.end_date >= CURRENT_DATE 
+                      AND EXTRACT(DOW FROM CURRENT_DATE) = 
+                          CASE 
+                              WHEN cs.day = 'Sunday' THEN 0 
+                              WHEN cs.day = 'Monday' THEN 1 
+                              WHEN cs.day = 'Tuesday' THEN 2 
+                              WHEN cs.day = 'Wednesday' THEN 3 
+                              WHEN cs.day = 'Thursday' THEN 4 
+                              WHEN cs.day = 'Friday' THEN 5 
+                              WHEN cs.day = 'Saturday' THEN 6 
+                              ELSE NULL 
+                          END
+                      AND cs.status = 'in-progress'
+                """, [swimmer_id])
+                courses = cursor.fetchall()
+                logger.info(f"Courses fetched: {courses}")
+
+            if not courses:
+                logger.warning("No courses found for the specified nonmember.")
+                return JsonResponse({"daily_courses": []}, status=200)
+
+            course_data = [
+                {
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "course_image": course[2],
+                    "coach_id": course[3],
+                    "course_description": course[4],
+                    "restrictions": course[5],
+                    "deadline": course[6],
+                    "pool_id": course[7],
+                    "lane_id": course[8],
+                    "price": course[9]
+                }
+                for course in courses
+            ]
+            return JsonResponse({"daily_courses": course_data}, status=200)
+
+        except Exception as e:
+            logger.error(f"Error fetching daily courses: {e}")
+            return JsonResponse({"error": "An error occurred while fetching courses.", "details": str(e)}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WeeklyCoursesNonmemberView(View):
-    permission_classes = [AllowAny]
     def get(self, request):
-        nonmember_id = request.GET.get('nonmember_id')
-        today = datetime.today()
-        start_of_week = today - datetime.timedelta(days=today.weekday()) 
-        end_of_week = start_of_week + datetime.timedelta(days=6) 
+        try:
+            nonmember_id = request.GET.get('nonmember_id')
+            if not nonmember_id:
+                return JsonResponse({"error": "Nonmember ID is required."}, status=400)
 
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE swimmer_id = %s AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND day BETWEEN %s AND %s AND status='in-progress)", 
-                           [nonmember_id, start_of_week.date(), end_of_week.date()])
-            courses = cursor.fetchall()
+            today = datetime.now().date()
+            start_of_week = today - timedelta(days=today.weekday())
+            end_of_week = start_of_week + timedelta(days=6)
 
-        course_data = []
-        for course in courses:
-            course= {
-                "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[6],
-                "pool_id": course[7],
-                "lane_id": course[8],
-                "price": course[9]
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT c.course_id, c.course_name, c.course_image, c.coach_id, 
+                           c.course_description, c.restrictions, c.deadline, 
+                           c.pool_id, c.lane_id, c.price, cs.start_date, cs.end_date
+                    FROM course_schedule cs
+                    INNER JOIN course c ON cs.course_id = c.course_id
+                    WHERE cs.swimmer_id = %s
+                      AND cs.status = 'in-progress'
+                      AND cs.start_date <= %s
+                      AND cs.end_date >= %s
+                """, [nonmember_id, end_of_week, start_of_week])
+
+                courses = cursor.fetchall()
+
+            if not courses:
+                return JsonResponse({"weekly_courses": []}, status=200)
+
+            course_data = [
+                {
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "course_image": course[2],
+                    "coach_id": course[3],
+                    "course_description": course[4],
+                    "restrictions": course[5],
+                    "deadline": course[6],
+                    "pool_id": course[7],
+                    "lane_id": course[8],
+                    "price": course[9],
+                    "start_date": course[10],
+                    "end_date": course[11]
                 }
-            course_data.append(course)
-           
-        return JsonResponse({"weekly_courses": course_data})
+                for course in courses
+            ]
+
+            return JsonResponse({"weekly_courses": course_data}, status=200)
+        except Exception as e:
+            print(f"Error in WeeklyCoursesNonmemberView: {str(e)}")
+            return JsonResponse({"error": "An error occurred while fetching weekly courses.", "details": str(e)}, status=500)
+
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class CoursesNonmemberView(View):
