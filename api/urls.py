@@ -3,7 +3,6 @@ from .views import *
 from django.urls import path
 from django.conf.urls import include
 
-
 urlpatterns = [
     path('', LoginView.as_view(), name='login'),
     path('login/', LoginView.as_view(), name='login'),
@@ -22,12 +21,12 @@ urlpatterns = [
     path('add_rating/', AddRatingView.as_view(), name='add_rating'),
     path('update_rating/', UpdateRatingView.as_view(), name='update_rating'),
     path('add_comment/', AddCourseCommentView.as_view(), name="add_comment"),
+    path('withdraw_course/', WithdrawCourseView.as_view(), name='withdraw_course'),
     path('swimming_pools/', PoolsView.as_view(), name='get_pool'),
     path('available_lanes', AvailableLanes.as_view(), name= 'get_available_lanes'),
     path('lanes/', AllLanesView.as_view(), name='lanes'),
     path('book_lane/', BookLaneView.as_view(), name= 'book_lane'),
     path('users/', UsersView.as_view(), name='users'),
-    path('get_user/', GetUserView.as_view(), name='get_user'),
     path('create_user/', CreateUserView.as_view(), name='create_user'),
     path('delete_user/', DeleteUserView.as_view(), name='delete_user'),
     path('become_member/', BecomeMemberView.as_view(), name='become_member'),
@@ -42,11 +41,12 @@ urlpatterns = [
     path('cafe_item/', CafeItemView.as_view(), name='cafe_item'),
     path('cart_items/', CartItemsView.as_view(), name='cart_items'),
     path('coach_courses/', CoachCoursesView.as_view(), name='coach_courses'),
+    path('coach_courses_current/', CoachCoursesUpcomingView.as_view(), name='coach_courses_upcoming'),
+    path('coach_courses_previous/', CoachCoursesPreviousView.as_view(), name='coach_courses_previous'),
     path('lifeguard_schedule/', LifeguardScheduleView.as_view(), name='lifeguard_schedule'),
     path('lifeguard_upcoming_hours/', LifeguardUpcomingHoursView.as_view(), name='upcoming_hours'),
     path('lifeguard_book_slot/', BookSlotLifeguardView.as_view(), name='book_slot_lifeguard'),
     path('upcoming_bookings/', UpcomingPoolBookingsView.as_view(), name='upcoming_bookings'),
-    path('delete_private_booking/', DeletePrivateBookingView.as_view(), name='delete_private_booking'),
     path('get_total_money/', GetTotalMoneyView.as_view(), name='get_total_money'),
     path('get_balance/', GetBalanceView.as_view(), name='get_balance'),
     path('withdraw_money/', WithdrawMoneyView.as_view(), name='withdraw_money'),
@@ -57,6 +57,7 @@ urlpatterns = [
     path('remove_course_from_cart/', RemoveCourseFromCartView.as_view(), name='remove_course_from_cart'),
     path('withdraw_course/', WithdrawCourseView.as_view(), name='withdraw_course'),
     path('finish_course/', FinishCourseView.as_view(), name='finish_course'),
+    path('cancel_course/', CancelCourseView.as_view(), name='cancel_course'),
     path('withdraw_personal_training/', WithdrawPersonalTrainingView.as_view(), name='withdraw_personal_training'),
     path('finish_personal_training/', FinishPersonalTrainingView.as_view(), name='finish_personal_training'),
     path('swimmers/', AllSwimmersView.as_view(), name="all_swimmers"),
@@ -78,4 +79,7 @@ urlpatterns = [
     path('get_csrf_token/', GetCSRFTokenView.as_view(), name='csrf_token'),
     path('withdraw_money_worker/', WithdrawMoneyWorkerView.as_view(), name='withdraw_money_worker'),
     path('deposit_money_worker/', DepositMoneyWorkerView.as_view(), name='deposit_money_worker'),
+    path('nonmember_courses/', CoursesNonmemberView.as_view(), name='nonmember_courses'),
+    path('upload_profile_picture/', upload_profile_picture, name='upload_profile_picture'),
+    path('course_students/', GetCourseStudentsView.as_view(), name='get_course_students')
 ]

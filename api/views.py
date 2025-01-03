@@ -2021,7 +2021,7 @@ class WithdrawMoneyWorkerView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        worker_id = data.get('userId')
+        worker_id = data.get('worker_id')
         amount = float(data.get('amount'))
 
         with connection.cursor() as cursor:
@@ -2352,31 +2352,3 @@ class GetCourseStudentsView(View):
             
         return JsonResponse({"students": course_students})
 
-@method_decorator(csrf_exempt, name='dispatch')
-class DeletePrivateBookingView(View):
-    def delete(self, request):
-        try:
-            # JSON gövdesinden booking_id'yi al
-            data = json.loads(request.body)
-            booking_id = data.get('private_booking_id')
-
-            if not booking_id:
-                return JsonResponse({"error": "booking_id is required."}, status=400)
-
-            with connection.cursor() as cursor:
-                # Booking'in var olup olmadığını kontrol et
-                cursor.execute("SELECT * FROM private_booking WHERE private_booking_id = %s", [booking_id])
-                booking = cursor.fetchone()
-
-                if not booking:
-                    return JsonResponse({"error": "Booking not found."}, status=404)
-
-                # Booking'i sil
-                cursor.execute("DELETE FROM private_booking WHERE private_booking_id = %s", [booking_id])
-
-            return JsonResponse({"message": "Booking deleted successfully."}, status=200)
-
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON."}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {str(e)}"}, status=500)
