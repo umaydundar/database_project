@@ -2,15 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./LayoutCoach.css";
 import "boxicons/css/boxicons.min.css";
-import { useUser } from "../UserContext";
 import axios from "axios";
 
 const LayoutCoach = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { username } = useUser();
     const [totalMoney, setTotalMoney] = useState(1500);
     const [generalRating, setGeneralRating] = useState(0); 
+    const userId = localStorage.getItem("userId");
 
     useEffect(() => {
         const fetchCoach = async () => {
@@ -18,27 +17,31 @@ const LayoutCoach = ({ children }) => {
                 const response = await axios.get(
                     "http://127.0.0.1:8000/api/get_coach/",
                     {
-                        params: { username },
+                        params: { userId},
                         headers: {
                             "Content-Type": "application/json",
                         },
                         withCredentials: true,
                     }
                 );
+                
+
+                console.log(response.data);
+
                 if (response.status === 200) {
+
                     setGeneralRating(response.data.coach.avg_rating);
-                    setTotalMoney(response.data.coach.balance); 
+                    setTotalMoney(response.data.coach.balance);
                 }
-                console.log(response);
             } catch (error) {
                 console.error("Failed to fetch coach data:", error);
             }
         };
 
-        if (username) {
+        if (userId) {
             fetchCoach();
         }
-    }, [username]);
+    }, [userId]);
 
     const handleLogout = () => {
         localStorage.removeItem("userRole");
@@ -60,13 +63,15 @@ const LayoutCoach = ({ children }) => {
                 <div className="sidebar-content">
                     <div className="logo">
                         <i className="bx bx-trophy icon"></i>
-                        <span className="logo-name">Welcome, {username}</span>
+                        <span className="logo-name">Welcome Coach</span>
                     </div>
                     <div className="balance-container">
                         <div className="balance-view">
                             <span className="balance-label">Your Rating:</span>
                             <span className="balance-amount">
-                                {generalRating + "/5"}
+                                {generalRating !== null && generalRating !== undefined
+                                    ? `${generalRating.toFixed(1)} / 5`
+                                    : "Loading..."}
                             </span>
                         </div>
                         <div className="balance-view">

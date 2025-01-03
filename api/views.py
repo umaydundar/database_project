@@ -1201,12 +1201,12 @@ class GetCoachView(View):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        username = request.GET.get('username')
+        username = request.GET.get('userId')
         if not username:
             return JsonResponse({"error": "Username is required"}, status=400)
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT user_id FROM all_users WHERE username = %s", [username])
+            cursor.execute("SELECT user_id FROM all_users WHERE user_id= %s", [username])
             user = cursor.fetchone()
 
         with connection.cursor() as cursor:
@@ -1854,14 +1854,12 @@ class WithdrawMoneyView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            worker_id = data.get('worker_id')
+            print(data) 
+            worker_id = data.get('userId')
             amount = float(data.get('amount'))
 
-            if not worker_id or amount <= 0:
-                return JsonResponse({"error": "Invalid worker ID or amount."}, status=400)
 
             with connection.cursor() as cursor:
-                # Check if worker exists and has sufficient balance
                 cursor.execute("SELECT balance FROM worker WHERE worker_id=%s", [worker_id])
                 result = cursor.fetchone()
 
@@ -1889,7 +1887,7 @@ class WithdrawMoneyWorkerView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        worker_id = data.get('worker_id')
+        worker_id = data.get('userId')
         amount = float(data.get('amount'))
 
         with connection.cursor() as cursor:

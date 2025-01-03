@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from "react";
-import LayoutCoach from "./LayoutCoach"; // Ensure correct import
+import LayoutCoach from "./LayoutCoach"; 
 import "./WithdrawMoneyCoach.css";
 import axios from "axios";
 
 const WithdrawMoney = () => {
-  const [balance, setBalance] = useState(1500); // Initialize balance
+  const [balance, setBalance] = useState(1500); 
   const [amount, setAmount] = useState("");
   const [iban, setIban] = useState("");
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-
+  const userId = localStorage.getItem("userId"); 
+  
   useEffect(() => {
-    // Fetch balance from the backend
+
     const fetchBalance = async () => {
       try {
-        const workerId = localStorage.getItem("coachId"); // Ensure worker ID is stored
+        const workerId = localStorage.getItem("coachId"); 
         if (!workerId) {
           setError("Worker ID not found. Please log in again.");
           return;
@@ -23,7 +24,7 @@ const WithdrawMoney = () => {
         const response = await axios.get(
           `http://127.0.0.1:8000/api/get_balance/?worker_id=${workerId}`
         );
-
+        console.log(response);
         setBalance(response.data.balance);
       } catch (err) {
         setError("Failed to fetch balance.");
@@ -59,21 +60,22 @@ const WithdrawMoney = () => {
     setIsProcessing(true);
 
     try {
-      const workerId = localStorage.getItem("workerId"); // Retrieve worker ID
+      
+      console.log({ userId, amount });
       const response = await axios.post(
         "http://127.0.0.1:8000/api/withdraw_money_worker/",
-        { worker_id: workerId, amount }, // Request body
+        { userId, amount }, 
         {
           headers: {
             "Content-Type": "application/json",
           },
-          withCredentials: true, // Ensure cookies are sent
+          withCredentials: true, 
         }
       );
 
       if (response.status === 200) {
         alert("Withdrawal successful!");
-        setBalance((prevBalance) => prevBalance - amount); // Update balance locally
+        setBalance((prevBalance) => prevBalance - amount); 
         setAmount("");
         setIban("");
       } else {
