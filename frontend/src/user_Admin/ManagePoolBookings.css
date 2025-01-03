@@ -167,3 +167,45 @@
         padding: 4px 8px;
     }
 }
+/* Modal overlay arkaplanı */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Yarı saydam karartma */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999; /* Tüm içeriklerin üzerinde */
+}
+
+/* Modal içeriği */
+.modal-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 80%;
+    text-align: left;
+    position: relative;
+}
+
+/* Modal kapatma butonu */
+.modal-close-button {
+    margin-top: 20px;
+    padding: 8px 16px;
+    background-color: #007bff;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.modal-close-button:hover {
+    background-color: #0056b3;
+}

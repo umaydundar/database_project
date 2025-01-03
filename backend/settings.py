@@ -83,7 +83,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'poolAppDb',
         'USER': 'postgres',
-        'PASSWORD': 'damla',
+        'PASSWORD': 'PostgrePass',
         'HOST': 'localhost',
         'PORT': '5432',
     }
