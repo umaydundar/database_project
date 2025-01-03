@@ -115,7 +115,7 @@ class RegisterView(View):
                 cursor.execute("""
                     INSERT INTO worker (worker_id, pool_id, age, gender, phone_number, qualifications, balance)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, [new_user_id, pool_id, 0, gender, "", "", 0]) 
+                """, [new_user_id, 1, 0, gender, "", "", 0]) 
 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -128,7 +128,7 @@ class RegisterView(View):
                 cursor.execute("""
                     INSERT INTO worker (worker_id, pool_id, age, gender, phone_number, qualifications, balance)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, [new_user_id, pool_id, 0, gender, "", "", 0]) 
+                """, [new_user_id, 1, 0, gender, "", "", 0]) 
 
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -419,6 +419,9 @@ class DeleteCourseView(View):
         data = json.loads(request.body)
         course_id = data.get('course_id')
         with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM course_schedule WHERE course_id=%s", [course_id])
+            
+        with connection.cursor() as cursor:
             cursor.execute("DELETE FROM course WHERE course_id=%s", [course_id])
             
         with connection.cursor() as cursor:
@@ -426,9 +429,7 @@ class DeleteCourseView(View):
             
         with connection.cursor() as cursor:
             cursor.execute("DELETE FROM personal_training WHERE training_id=%s", [course_id])
-            
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE course_schedule SET status='cancelled' WHERE course_id=%s", [course_id])
+        
         
         return JsonResponse({"message": "Course deleted successfully"}, status=200)
     
@@ -552,14 +553,21 @@ class AddRatingView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        coach_id = data.get("coach_id")
         swimmer_id = data.get("swimmer_id")
         course_id = data.get("course_id")
         rating = data.get("rating")
         
         with connection.cursor() as cursor:
-            cursor.execute("INSERT INTO rating (swimmer_id, coach_id, course_id, rating) VALUES (%s, %s, %s)",
+            cursor.execute("SELECT coach_id  FROM course WHERE course_id=%s", [course_id])
+            coach_id = cursor.fetchone()[0]
+            
+        with connection.cursor() as cursor:
+            cursor.execute("INSERT INTO rating (swimmer_id, coach_id, course_id, rating) VALUES (%s, %s, %s, %s)",
                 [swimmer_id, coach_id, course_id, rating])
+            
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE coach SET avg_rating= (SELECT AVG(rating) FROM rating WHERE coach_id=%s) WHERE coach_id=%s",
+                [coach_id, coach_id])
         
         return JsonResponse({"message": "Rating added successfully"}, status=200)
     
@@ -568,14 +576,22 @@ class UpdateRatingView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        coach_id = data.get("coach_id")
         swimmer_id = data.get("swimmer_id")
         course_id = data.get("course_id")
         rating = data.get("rating")
         
         with connection.cursor() as cursor:
+            cursor.execute("SELECT coach_id  FROM course WHERE course_id=%s", [course_id])
+            coach_id = cursor.fetchone()[0]
+            
+        with connection.cursor() as cursor:
             cursor.execute("UPDATE rating SET rating=%s WHERE course_id=%s AND coach_id=%s AND swimmer_id=%s",
                 [rating, course_id, coach_id, swimmer_id])
+            
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE coach SET avg_rating= (SELECT AVG(rating) FROM rating WHERE coach_id=%s) WHERE coach_id=%s",
+                [coach_id, coach_id])
+      
         return JsonResponse({"message": "Rating updated successfully"}, status=200)
     
 @method_decorator(csrf_exempt, name='dispatch')
@@ -989,40 +1005,54 @@ class DeleteUserView(View):
             cursor.execute("SELECT * FROM all_users WHERE user_id = %s", [user_id])
             user_type = cursor.fetchone()[6]
             
-        with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id])
-            
         if(user_type == "1"):
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM nonmember_swimmer WHERE swimmer_id = %s", [user_id])
+                
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM swimmer WHERE swimmer_id = %s", [user_id])
                 
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM nonmember_swimmer WHERE swimmer_id = %s", [user_id])
-            
+                cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id])
+                
+         
         elif(user_type == "2"):
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM swimmer WHERE swimmer_id = %s", [user_id])
-            
-            with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM member_swimmer WHERE swimmer_id = %s", [user_id])
+                
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM swimmer WHERE swimmer_id = %s", [user_id])
+                
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id])
             
         elif(user_type == "3"):
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM worker WHERE worker_id = %s", [user_id])
-                
-            with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM lifeguard WHERE lifeguard_id = %s", [user_id])
-             
-        elif(user_type == "4"):
+                
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM worker WHERE worker_id = %s", [user_id])
             
             with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id])
+                
+             
+        elif(user_type == "4"):
+            with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM coach WHERE coach_id = %s", [user_id])
+                
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM worker WHERE worker_id = %s", [user_id])
+            
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id]) 
                 
         else: #(user_type == "5")
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM administrator WHERE administrator_id = %s", [user_id])
+                
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM all_users WHERE user_id = %s", [user_id])
                 
         return JsonResponse({"message": "User deleted successfully"})
 
