@@ -667,66 +667,145 @@ class AllLanesView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class AvailableLanes(View):
     permission_classes = [AllowAny]
-    def get(self, request):
-        pool_id = request.GET.get("pool_id")
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM lane WHERE pool_id=%s AND availability=%s", [pool_id, "available"])
-            lanes = cursor.fetchall()
 
-        available_lanes = []
-        for lane in lanes:
-            lane = {
+    def get(self, request):
+        print("AvailableLanes endpoint hit!")
+        pool_id = request.GET.get("pool_id")
+        if not pool_id:
+            logger.error("Missing pool_id in the request.")
+            return JsonResponse({"error": "Pool ID is required."}, status=400)
+        date = request.GET.get("date")
+
+        if not pool_id or not date:
+            return JsonResponse({"error": "Pool ID and date are required."}, status=400)
+        
+        logger.info(f"Fetching lanes for pool_id: {pool_id}")
+
+        try:
+            with connection.cursor() as cursor:
+                # Check for lanes that are not in-use or booked during the specified date and time range
+                cursor.execute("""
+                    SELECT lane_id, pool_id, lane_number, lifeguard_id, start_time, 
+                           end_time, booking_price, availability
+                    FROM lane
+                    WHERE pool_id = %s
+                      AND availability = %s
+                      AND lane_id NOT IN (
+                          SELECT lane_id
+                          FROM private_booking
+                          WHERE date = %s
+                      )
+                      AND lane_id NOT IN (
+                          SELECT lane_id
+                          FROM course
+                          WHERE date = %s
+                      )
+                """, [pool_id, "available", date, date])
+
+                lanes = cursor.fetchall()
+                print(lanes)
+
+            if not lanes:
+                return JsonResponse({"lanes": []}, status=200)
+
+            available_lanes = [
+                {
                     "lane_id": lane[0],
                     "pool_id": lane[1],
                     "lane_number": lane[2],
                     "lifeguard_id": lane[3],
-                    "start_time": lane[4],
-                    "end_time": lane[5],
-                    "availability": lane[6]
-                    }
-            available_lanes.append(lane)
-        return JsonResponse({"lanes": available_lanes})
+                    "start_time": str(lane[4]) if lane[4] else None,
+                    "end_time": str(lane[5]) if lane[5] else None,
+                    "booking_price": lane[6],
+                    "availability": lane[7]
+                }
+                for lane in lanes
+            ]
+
+            return JsonResponse({"lanes": available_lanes}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while fetching available lanes.", "details": str(e)}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class BookLaneView(View):
-    permission_classes = [AllowAny]
     def post(self, request):
-        data = json.loads(request.body)
-        swimmer_id = data.get("swimmer_id")
-        lane_id = data.get("lane_id")
-        start_time = data.get("start_time")
-        end_time = data.get("end_time")
-        status = data.get("status")
-        
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO private_booking (swimmer_id, lane_id, start_time, end_time) VALUES (%s, %s, %s, %s)",
-                [swimmer_id, lane_id, start_time, end_time, status]
-            )
-        
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "UPDATE lane SET availability=%s WHERE lane_id=%s",
-                ["in-use", lane_id]
-            )
-            
-            cursor.execute(
-                "DELETE FROM cart WHERE purchaser_id = %s AND lane_id = %s",
-                [swimmer_id, lane_id],
-            )
-            
-            cursor.execute("SELECT * FROM lane HERE lane_id=%s", [lane_id])
-            lane = cursor.fetchone()
-            booking_price = lane[6]
-            
-            cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE user_id = %s", [booking_price, swimmer_id])
-            
-            cursor.execute(
-                "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
-                [swimmer_id, 0, 0, 0, lane_id, datetime.now],
-            )
-            
-        return JsonResponse({"message": "Lane booked successfully"})
+        try:
+            data = json.loads(request.body)
+            swimmer_id = data.get("swimmer_id")
+            lane_id = data.get("lane_id")
+            date = data.get("date")
+            start_time = data.get("start_time")
+            end_time = data.get("end_time")
+
+            if not swimmer_id or not lane_id or not date or not start_time or not end_time:
+                return JsonResponse({"error": "Missing required fields."}, status=400)
+
+            with connection.cursor() as cursor:
+                # Check if the lane is in-use or booked by a course
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM private_booking 
+                    WHERE lane_id = %s AND date = %s AND 
+                          (start_time < %s AND end_time > %s)
+                """, [lane_id, date, end_time, start_time])
+                conflicting_booking = cursor.fetchone()[0]
+
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM course
+                    WHERE lane_id = %s AND date = %s AND 
+                          (start_time < %s AND end_time > %s)
+                """, [lane_id, date, end_time, start_time])
+                conflicting_course = cursor.fetchone()[0]
+
+                if conflicting_booking > 0 or conflicting_course > 0:
+                    return JsonResponse({"error": "The lane is already booked or occupied by a course."}, status=400)
+
+                # Insert the booking into private_booking
+                cursor.execute("""
+                    INSERT INTO private_booking (swimmer_id, lane_id, date, start_time, end_time, status)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, [swimmer_id, lane_id, date, start_time, end_time, "in-use"])
+
+                # Update the lane status
+                cursor.execute("""
+                    UPDATE lane
+                    SET availability = %s
+                    WHERE lane_id = %s
+                """, ["in-use", lane_id])
+
+                # Retrieve booking price from the lane table
+                cursor.execute("""
+                    SELECT booking_price
+                    FROM lane
+                    WHERE lane_id = %s
+                """, [lane_id])
+                lane = cursor.fetchone()
+
+                if not lane:
+                    return JsonResponse({"error": "Lane not found."}, status=404)
+
+                booking_price = lane[0]
+
+                # Deduct the booking price from the swimmer's balance
+                cursor.execute("""
+                    UPDATE swimmer
+                    SET total_money = total_money - %s
+                    WHERE swimmer_id = %s
+                """, [booking_price, swimmer_id])
+
+                # Add the booking to the buying history
+                cursor.execute("""
+                    INSERT INTO buying_history (purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, [swimmer_id, None, None, None, lane_id, datetime.now()])
+
+            return JsonResponse({"message": "Lane booked successfully."}, status=201)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while booking the lane.", "details": str(e)}, status=500)
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class UsersView(View):
@@ -949,101 +1028,40 @@ class DeleteUserView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateMemberProfileView(View):
-    permission_classes = [AllowAny]
-
     def post(self, request):
         try:
             data = json.loads(request.body)
-
-            # Extract required fields
             user_id = data.get("user_id")
-            if not user_id:
-                return JsonResponse({"error": "User ID is required."}, status=400)
+            user_image_base64 = data.get("user_image")
 
-            # Data for `all_users` table
-            user_image = data.get("user_image")
-            forename = data.get("forename")
-            surname = data.get("surname")
-            username = data.get("username")
-            password = data.get("password")
-            email = data.get("email")
+            if user_image_base64:
+                user_image = base64.b64decode(user_image_base64)
+            else:
+                user_image = None
 
-            # Data for `swimmer` table
-            total_money = data.get("total_money")
-            swim_proficiency = data.get("swim_proficiency")
-            number_of_booked_slots = data.get("number_of_booked_slots")
-            total_courses_enrolled = data.get("total_courses_enrolled")
-            total_courses_terminated = data.get("total_courses_terminated")
-            membership_status = data.get("membership_status")
-            age = data.get("age")
-            gender = data.get("gender")
-            phone_number = data.get("phone_number")
-
-            # Data for `member_swimmer` table
-            points = data.get("points")
-            monthly_payment_amount = data.get("monthly_payment")
-            number_of_personal_training_hours = data.get("number_of_personal_training_hours")
-            ranking = data.get("ranking")
-            number_of_items_purchased = data.get("number_of_items_purchases")
-
-            # Check if member exists in `member_swimmer` table
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT swimmer_id FROM member_swimmer WHERE swimmer_id=%s", [user_id])
-                member_exists = cursor.fetchone()
-
-            if not member_exists:
-                return JsonResponse({"error": "Member does not exist in member_swimmer table."}, status=404)
-
-            # Update `all_users` table
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    UPDATE all_users 
+                    UPDATE all_users
                     SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, email=%s
                     WHERE user_id=%s
                     """,
-                    [user_image, forename, surname, username, password, email, user_id]
-                )
-
-            # Update `swimmer` table
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    UPDATE swimmer 
-                    SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, 
-                        number_of_booked_slots=%s, total_courses_enrolled=%s, 
-                        total_courses_terminated=%s, membership_status=%s, total_money=%s
-                    WHERE swimmer_id=%s
-                    """,
                     [
-                        phone_number, age, gender, swim_proficiency, 
-                        number_of_booked_slots, total_courses_enrolled, 
-                        total_courses_terminated, membership_status, total_money, user_id
-                    ]
+                        user_image,
+                        data.get("forename"),
+                        data.get("surname"),
+                        data.get("username"),
+                        data.get("password"),
+                        data.get("email"),
+                        user_id,
+                    ],
                 )
-
-            # Update `member_swimmer` table
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    UPDATE member_swimmer 
-                    SET points=%s, monthly_payment_amount=%s, 
-                        number_of_personal_training_hours=%s, ranking=%s, 
-                        number_of_items_purchased=%s
-                    WHERE swimmer_id=%s
-                    """,
-                    [
-                        points, monthly_payment_amount, 
-                        number_of_personal_training_hours, ranking, 
-                        number_of_items_purchased, user_id
-                    ]
-                )
-
-            return JsonResponse({"message": "Member profile updated successfully."}, status=200)
-
+            return JsonResponse({"message": "Profile updated successfully."}, status=200)
         except Exception as e:
-            return JsonResponse({"error": "An error occurred while updating the profile.", "details": str(e)}, status=500)
-
+            return JsonResponse(
+                {"error": "An error occurred while updating the profile.", "details": str(e)},
+                status=500,
+            )
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateNonmemberProfileView(View):
@@ -1393,18 +1411,56 @@ class GetAdministratorView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class BecomeMemberView(View):
     permission_classes = [AllowAny]
+
     def post(self, request):
-        data = json.loads(request.body)
-        user_id = data.get('user_id')
-        
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET user_type = '2' WHERE user_id = %s", [user_id])
-            cursor.execute("UPDATE swimmer SET membership_status = 'member' WHERE swimmer_id = %s", [user_id])
-            cursor.execute("INSERT INTO member_swimmer (swimmer_id, points, monthly_payment_amount, number_of_personal_training_hours, ranking, number_of_items_purchased) VALUES (%s, 0, 0, 0, 0, 0)", [user_id])
-            cursor.execute("DELETE FROM nonmember_swimmer WHERE swimmer_id = %s", [user_id])
-        
-        request.session.flush() 
-        return JsonResponse({"message": "User has become a member successfully"}, status=200)
+        try:
+            data = json.loads(request.body)
+            user_id = data.get("user_id")
+            
+            if not user_id:
+                return JsonResponse({"error": "User ID is required."}, status=400)
+
+            with connection.cursor() as cursor:
+                # Fetch swimmer's balance
+                cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id = %s", [user_id])
+                swimmer_money = cursor.fetchone()
+
+                if swimmer_money is None or swimmer_money[0] is None:
+                    return JsonResponse({"error": "Swimmer's balance not found."}, status=404)
+
+                total_money = swimmer_money[0]
+
+                # Check if balance is sufficient for membership (100 TL)
+                membership_fee = 100
+                if total_money < membership_fee:
+                    return JsonResponse({"error": "Insufficient funds to become a member."}, status=400)
+
+                # Deduct 100 TL for membership
+                cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [membership_fee, user_id])
+
+                # Update user's membership status
+                cursor.execute("UPDATE all_users SET user_type = '2' WHERE user_id = %s", [user_id])
+                cursor.execute("UPDATE swimmer SET membership_status = 'member' WHERE swimmer_id = %s", [user_id])
+
+                # Add entry to member_swimmer table
+                cursor.execute("""
+                    INSERT INTO member_swimmer (swimmer_id, points, monthly_payment_amount, 
+                                                number_of_personal_training_hours, ranking, 
+                                                number_of_items_purchased)
+                    VALUES (%s, 0, 0, 0, 0, 0)
+                """, [user_id])
+
+                # Remove from nonmember_swimmer table
+                cursor.execute("DELETE FROM nonmember_swimmer WHERE swimmer_id = %s", [user_id])
+
+            # Clear session to force re-login if needed
+            request.session.flush()
+            return JsonResponse({"message": "User has successfully become a member."}, status=200)
+
+        except Exception as e:
+            # Log the exception for debugging
+            print(f"Error in BecomeMemberView: {e}")
+            return JsonResponse({"error": "An error occurred while processing the membership.", "details": str(e)}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CancelMembershipView(View):

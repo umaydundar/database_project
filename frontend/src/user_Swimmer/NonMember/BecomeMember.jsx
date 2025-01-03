@@ -1,106 +1,50 @@
 import React, { useState } from 'react';
 import Sidebar from './LayoutNonMember.jsx';
 import './BecomeMember.css';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 
 const Membership = () => {
-    // Initialize memberships from localStorage or as an empty array
-    const [memberships, setMemberships] = useState(() => {
-        const savedMemberships = localStorage.getItem('membership-data');
-        return savedMemberships ? JSON.parse(savedMemberships) : [];
-    });
+    const [confirmation, setConfirmation] = useState(false); // Confirmation state
+    const [successMessage, setSuccessMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const navigate = useNavigate(); // Initialize navigate for redirection
 
-    // Form state
-    const [formData, setFormData] = useState({
-        fullName: '',
-        email: '',
-        phone: '',
-        address: '',
-        membershipPlan: 'Basic',
-    });
-
-    // Submission status
-    const [submissionStatus, setSubmissionStatus] = useState({
-        success: null,
-        message: '',
-    });
-
-    // Handle input changes
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prevData) => ({
-            ...prevData,
-            [name]: value,
-        }));
-    };
-
-    // Simple validation functions
-    const validateEmail = (email) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    };
-
-    const validatePhone = (phone) => {
-        const phoneRegex = /^[0-9]{10}$/;
-        return phoneRegex.test(phone);
-    };
-
-    // Handle form submission
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        const { fullName, email, phone, address, membershipPlan } = formData;
-
-        // Basic validation
-        if (!fullName || !email || !phone || !address || !membershipPlan) {
-            setSubmissionStatus({
-                success: false,
-                message: 'Please fill in all required fields.',
-            });
+    const handleBecomeMember = async () => {
+        const userId = localStorage.getItem('nonMemberId');
+        if (!userId) {
+            setErrorMessage('User not logged in.');
             return;
         }
-
-        if (!validateEmail(email)) {
-            setSubmissionStatus({
-                success: false,
-                message: 'Please enter a valid email address.',
+    
+        console.log('User ID:', userId); // Debugging: Log user_id
+    
+        try {
+            const response = await axios.post('http://127.0.0.1:8000/api/become_member/', {
+                user_id: userId,
             });
-            return;
+    
+            if (response.status === 200) {
+                setSuccessMessage('You are now a member!');
+                localStorage.removeItem('nonMemberId');
+                localStorage.setItem('userType', 'member');
+
+                // Automatically logout and redirect to the login or home page
+                setTimeout(() => {
+                    localStorage.clear(); // Clear all local storage items
+                    alert('You have been logged out. Please log in as a member.');
+                    navigate('/'); // Redirect to the home or login page
+                }, 2000); // Delay for 2 seconds to show success message
+            }
+        } catch (error) {
+            console.error(
+                'Error becoming a member:',
+                error.response ? error.response.data : error.message // Log backend error details
+            );
+            setErrorMessage('Failed to become a member.');
         }
-
-        if (!validatePhone(phone)) {
-            setSubmissionStatus({
-                success: false,
-                message: 'Please enter a valid 10-digit phone number.',
-            });
-            return;
-        }
-
-        // Create new membership entry
-        const newMembership = {
-            id: Date.now(),
-            ...formData,
-            registrationDate: new Date().toISOString(),
-        };
-
-        // Update state and localStorage
-        const updatedMemberships = [...memberships, newMembership];
-        setMemberships(updatedMemberships);
-        localStorage.setItem('membership-data', JSON.stringify(updatedMemberships));
-
-        // Reset form and set success message
-        setFormData({
-            fullName: '',
-            email: '',
-            phone: '',
-            address: '',
-            membershipPlan: 'Basic',
-        });
-        setSubmissionStatus({
-            success: true,
-            message: 'Thank you for registering! Your membership is now active.',
-        });
     };
-
+    
     return (
         <div className="membership-main-container">
             <div className="membership-bottom-container">
@@ -108,71 +52,39 @@ const Membership = () => {
                 <div className="membership-content-container">
                     <h1 className="membership-heading">Become a Member</h1>
 
-                    <form className="membership-form" onSubmit={handleSubmit}>
-                        {/* Personal Information */}
-                        <div className="membership-form-group">
-                            <label htmlFor="fullName">Full Name<span className="required">*</span>:</label>
-                            <input
-                                type="text"
-                                id="fullName"
-                                name="fullName"
-                                value={formData.fullName}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        <div className="membership-form-group">
-                            <label htmlFor="email">Email Address<span className="required">*</span>:</label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        <div className="membership-form-group">
-                            <label htmlFor="phone">Phone Number<span className="required">*</span>:</label>
-                            <input
-                                type="tel"
-                                id="phone"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                required
-                                placeholder="e.g., 1234567890"
-                            />
-                        </div>
-
-                        {/* Membership Plan */}
-                        <div className="membership-form-group">
-                            <label htmlFor="membershipPlan">Select Membership Plan<span className="required">*</span>:</label>
-                            <select
-                                id="membershipPlan"
-                                name="membershipPlan"
-                                value={formData.membershipPlan}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="Basic">Basic - $50/month</option>
-                            </select>
-                        </div>
-
-                        {/* Submission Status */}
-                        {submissionStatus.message && (
-                            <p className={`membership-message ${submissionStatus.success ? 'success' : 'error'}`}>
-                                {submissionStatus.message}
+                    {errorMessage && <p className="error-message">{errorMessage}</p>}
+                    {successMessage ? (
+                        <p className="success-message">{successMessage}</p>
+                    ) : confirmation ? (
+                        <div className="membership-confirmation-box">
+                            <p>
+                                Are you sure you want to become a member for <strong>100 TL</strong>?
                             </p>
-                        )}
-
-                        {/* Submit Button */}
-                        <button type="submit" className="membership-submit-button">
-                            Register
-                        </button>
-                    </form>
+                            <div className="membership-button-group">
+                                <button
+                                    onClick={handleBecomeMember}
+                                    className="membership-submit-button"
+                                >
+                                    Confirm
+                                </button>
+                                <button
+                                    onClick={() => setConfirmation(false)}
+                                    className="membership-cancel-button"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="membership-action-box">
+                            <button
+                                onClick={() => setConfirmation(true)}
+                                className="membership-submit-button"
+                            >
+                                Become a Member
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

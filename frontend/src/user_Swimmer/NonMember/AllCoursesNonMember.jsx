@@ -15,7 +15,7 @@ const AllCoursesNonMember = () => {
     // Fetch courses from the backend on component mount
     useEffect(() => {
         const fetchCourses = async () => {
-            const nonMemberId = localStorage.getItem('nonMemberId'); // Get non-member ID from local storage
+            const nonMemberId = localStorage.getItem('userId'); // Get non-member ID from local storage
             if (!nonMemberId) {
                 setError('Nonmember ID is missing.');
                 return;
@@ -52,7 +52,7 @@ const AllCoursesNonMember = () => {
 
     // Handle enrollment by sending a POST request to the backend
     const handleEnroll = async (course) => {
-        const nonMemberId = localStorage.getItem('nonMemberId');
+        const nonMemberId = localStorage.getItem('userId');
 
         if (!nonMemberId) {
             alert('Please log in to enroll in a course.');
