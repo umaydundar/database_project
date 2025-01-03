@@ -59,6 +59,8 @@ CREATE TABLE lane(
     start_time TIME,
     end_time TIME,
     booking_price INT,
+    start_date DATE,
+    end_date DATE,
     availability VARCHAR(255),
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
     FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),

@@ -1883,7 +1883,9 @@ class CoachCoursesPreviousView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LifeguardScheduleView(View):
-    permission_classes = [AllowAny]
+    """
+    Fetch *all* schedule info from the 'lane' table for a specific lifeguard.
+    """
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
         if not lifeguard_id:
@@ -1892,29 +1894,35 @@ class LifeguardScheduleView(View):
         try:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT * FROM course_schedule WHERE lifeguard_id=%s", 
+                    "SELECT * FROM lane WHERE lifeguard_id=%s",
                     [lifeguard_id]
                 )
-                schedule = cursor.fetchall()
+                rows = cursor.fetchall()
 
-            if not schedule:
-                return JsonResponse({"schedule": [], "message": "No schedule found for the lifeguard"}, status=200)
+            if not rows:
+                return JsonResponse(
+                    {"schedule": [], "message": "No schedule found for this lifeguard"},
+                    status=200
+                )
 
-            schedule_data = [
-                {
-                    "course_schedule_id": shift[0],
-                    "course_id": shift[1],
-                    "swimmer_id": shift[2],
-                    "lifeguard_id": shift[3],
-                    "start_date": shift[4],
-                    "end_date": shift[5],
-                    "start_time": shift[6],
-                    "end_time": shift[7],
-                    "day": shift[8],
-                    "status": shift[9],
-                }
-                for shift in schedule
-            ]
+            schedule_data = []
+            for row in rows:
+                # lane table columns: lane_id, pool_id, lane_number, lifeguard_id,
+                #                     start_time, end_time, booking_price, availability,
+                #                     start_date, end_date
+                schedule_data.append({
+                    "lane_id": row[0],
+                    "pool_id": row[1],
+                    "lane_number": row[2],
+                    "lifeguard_id": row[3],
+                    "start_time": str(row[4]),
+                    "end_time": str(row[5]),
+                    "booking_price": row[6],
+                    "availability": row[7],
+                    "start_date": str(row[8]),
+                    "end_date": str(row[9]),
+                })
+
             return JsonResponse({"schedule": schedule_data}, status=200)
         except Exception as e:
             return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
@@ -1922,7 +1930,10 @@ class LifeguardScheduleView(View):
 #todo
 @method_decorator(csrf_exempt, name='dispatch')
 class LifeguardUpcomingHoursView(View):
-    permission_classes = [AllowAny]
+    """
+    Fetch upcoming lanes for a lifeguard from 'lane' table
+    (start_date/time in the future or starting now).
+    """
     def get(self, request):
         lifeguard_id = request.GET.get('lifeguard_id')
         if not lifeguard_id:
@@ -1932,35 +1943,42 @@ class LifeguardUpcomingHoursView(View):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT * FROM course_schedule 
+                    SELECT * 
+                    FROM lane
                     WHERE lifeguard_id=%s 
-                    AND (start_date > CURRENT_DATE OR (start_date = CURRENT_DATE AND start_time >= CURRENT_TIME))
+                    AND (start_date > CURRENT_DATE 
+                         OR (start_date = CURRENT_DATE AND start_time >= CURRENT_TIME)
+                        )
                     """,
                     [lifeguard_id]
                 )
-                shifts = cursor.fetchall()
+                rows = cursor.fetchall()
 
-            if not shifts:
-                return JsonResponse({"upcoming_hours": [], "message": "No upcoming hours for the lifeguard"}, status=200)
+            if not rows:
+                return JsonResponse({
+                    "upcoming_hours": [],
+                    "message": "No upcoming hours for this lifeguard"
+                }, status=200)
 
-            shift_data = [
-                {
-                    "course_schedule_id": shift[0],
-                    "course_id": shift[1],
-                    "swimmer_id": shift[2],
-                    "lifeguard_id": shift[3],
-                    "start_date": shift[4],
-                    "end_date": shift[5],
-                    "start_time": shift[6],
-                    "end_time": shift[7],
-                    "day": shift[8],
-                    "status": shift[9],
-                }
-                for shift in shifts
-            ]
-            return JsonResponse({"upcoming_hours": shift_data}, status=200)
+            upcoming_data = []
+            for row in rows:
+                upcoming_data.append({
+                    "lane_id": row[0],
+                    "pool_id": row[1],
+                    "lane_number": row[2],
+                    "lifeguard_id": row[3],
+                    "start_time": str(row[4]),
+                    "end_time": str(row[5]),
+                    "booking_price": row[6],
+                    "availability": row[7],
+                    "start_date": str(row[8]),
+                    "end_date": str(row[9]),
+                })
+
+            return JsonResponse({"upcoming_hours": upcoming_data}, status=200)
         except Exception as e:
             return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
+
 
 #todo
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1969,46 +1987,72 @@ class BookSlotLifeguardView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            course_id = data.get('course_id')
+
+            pool_id = data.get('pool_id')
+            lane_number = data.get('lane_number')
             lifeguard_id = data.get('lifeguard_id')
             start_date = data.get('start_date')
             end_date = data.get('end_date')
             start_time = data.get('start_time')
             end_time = data.get('end_time')
-            day = data.get('day')
+            booking_price = data.get('booking_price', 0)
+            availability = data.get('availability', 'in-use')
 
-            if not all([course_id, lifeguard_id, start_date, end_date, start_time, end_time, day]):
+            # Basic validations
+            if not all([pool_id, lane_number, lifeguard_id, start_date, end_date, start_time, end_time]):
                 return JsonResponse({"error": "All fields are required"}, status=400)
 
             if start_date > end_date or (start_date == end_date and start_time >= end_time):
                 return JsonResponse({"error": "Invalid date or time range"}, status=400)
 
-            # Check for overlapping shifts
+            # Check for overlapping lane in the SAME pool + lane_number
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT * FROM course_schedule 
-                    WHERE lifeguard_id=%s 
-                    AND ((start_date = %s AND start_time < %s AND end_time > %s) OR (start_date <= %s AND end_date >= %s))
+                    SELECT 1
+                    FROM lane
+                    WHERE pool_id = %s
+                      AND lane_number = %s
+
+                      -- Date overlap
+                      AND start_date <= %s
+                      AND end_date   >= %s
+
+                      -- Time overlap
+                      AND start_time < %s
+                      AND end_time   > %s
+                    LIMIT 1
                     """,
-                    [lifeguard_id, start_date, end_time, start_time, end_date, start_date]
+                    [pool_id, lane_number, end_date, start_date, end_time, start_time]
                 )
                 overlap = cursor.fetchone()
-                if overlap:
-                    return JsonResponse({"error": "Schedule overlaps with an existing shift"}, status=400)
 
-            # Insert the new schedule
+                if overlap:
+                    return JsonResponse({
+                        "error": "Schedule overlaps with an existing lane booking in the same pool/lane."
+                    }, status=400)
+
+            # Insert the new lane booking
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO course_schedule (course_id, lifeguard_id, start_date, end_date, start_time, end_time, day, status) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO lane 
+                    (pool_id, lane_number, lifeguard_id, start_time, end_time, booking_price, availability, start_date, end_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    [course_id, lifeguard_id, start_date, end_date, start_time, end_time, day, "not-enrolled"]
+                    [
+                        pool_id, lane_number, lifeguard_id,
+                        start_time, end_time, booking_price,
+                        availability, start_date, end_date
+                    ]
                 )
-            return JsonResponse({"message": "Slot booked successfully"}, status=201)
+
+            return JsonResponse({"message": "Lane slot booked successfully"}, status=201)
+
         except Exception as e:
             return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
+
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -2448,3 +2492,122 @@ class GetCourseStudentsView(View):
             
         return JsonResponse({"students": course_students})
 
+@method_decorator(csrf_exempt, name='dispatch')
+class CancelLifeguardShiftView(View):
+    """
+    Cancel (delete) a lane booking by lane_id.
+    """
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            lane_id = data.get("lane_id")
+
+            if not lane_id:
+                return JsonResponse({"error": "lane_id is required"}, status=400)
+
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM lane
+                    WHERE lane_id = %s
+                    """,
+                    [lane_id]
+                )
+
+            return JsonResponse({"message": "Shift (lane) canceled successfully"}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GetAvailableLanesView(View):
+    """
+    Returns, for a given date, the pools/lane_numbers and time slots that are NOT booked.
+    
+    Simplified example: we define fixed potential time slots 
+    (8-10, 10-12, 12-14, etc.) and exclude any that overlap an existing booking.
+    """
+    def get(self, request):
+        date_str = request.GET.get('date')
+        if not date_str:
+            return JsonResponse({"error": "A 'date' query parameter is required (YYYY-MM-DD)."}, status=400)
+
+        # For a real scenario, parse the date and handle errors
+        try:
+            target_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return JsonResponse({"error": "Invalid date format (expected YYYY-MM-DD)."}, status=400)
+
+        # Example fixed time slots (start_time, end_time)
+        ALL_TIME_SLOTS = [
+            ("08:00:00", "10:00:00"),
+            ("10:00:00", "12:00:00"),
+            ("12:00:00", "14:00:00"),
+            ("14:00:00", "16:00:00"),
+            ("16:00:00", "18:00:00"),
+            ("18:00:00", "20:00:00"),
+        ]
+
+        # 1) Get all pools & lane_numbers from the DB 
+        #    (assuming you have a separate table or a way to list them).
+        #    For simplicity, let’s assume your 'lane' table enumerates all possible lanes.
+        #    If you'd rather have a separate 'pool' table or 'lanes_master' table, adjust accordingly.
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT DISTINCT pool_id, lane_number FROM lane")
+            all_lanes = cursor.fetchall()
+        
+        # If no lanes exist at all
+        if not all_lanes:
+            return JsonResponse({"available_lanes": []}, status=200)
+
+        # 2) For each (pool_id, lane_number), find which of the fixed time slots are booked on `target_date`.
+        #    Then whatever is not booked is "available".
+        result = []
+        with connection.cursor() as cursor:
+            for (pool_id, lane_number) in all_lanes:
+                # Get all bookings for this pool + lane_number that overlap the chosen date
+                cursor.execute(
+                    """
+                    SELECT start_time, end_time
+                    FROM lane
+                    WHERE pool_id = %s
+                      AND lane_number = %s
+                      AND start_date <= %s
+                      AND end_date >= %s
+                    """,
+                    [pool_id, lane_number, target_date, target_date]
+                )
+                bookings = cursor.fetchall()  # list of (start_time, end_time) for that day
+
+                # Convert to set for easy checking
+                # We'll store each booked timeslot in a simplified manner
+                booked_slots = set()
+                for (st, et) in bookings:
+                    booked_slots.add((str(st), str(et)))
+
+                # Now figure out which of ALL_TIME_SLOTS are free
+                free_slots = []
+                for (slot_start, slot_end) in ALL_TIME_SLOTS:
+                    # Check if this (slot_start, slot_end) is overlapped by any booking
+                    # Basic overlap logic: if (slot_start < booking_end_time) and (slot_end > booking_start_time)
+                    # But since you store the entire start_time, end_time, we do a quick check:
+                    is_overlapped = False
+                    for (booked_start, booked_end) in booked_slots:
+                        if not (slot_end <= booked_start or slot_start >= booked_end):
+                            # They overlap
+                            is_overlapped = True
+                            break
+                    if not is_overlapped:
+                        free_slots.append(f"{slot_start} - {slot_end}")
+
+                # If any free slots exist for this lane, add them to the result
+                if free_slots:
+                    result.append({
+                        "pool_id": pool_id,
+                        "lane_number": lane_number,
+                        "date": date_str,
+                        "available_time_slots": free_slots
+                    })
+
+        return JsonResponse({"available_lanes": result}, status=200)
