@@ -327,14 +327,13 @@ class GetCourseView(View):
                 current_course_data = {
                     "course_id": course[0],
                     "course_name": course[1],
-                    "course_image": course[2],
-                    "coach_id": course[3],
+                    "course_image": course[3],
+                    "coach_id": course[2],
                     "course_description": course[4],
                     "restrictions": course[5],
-                    "deadline": course[6],
-                    "pool_id": course[7],
-                    "lane_id": course[8],
-                    "price": course[9],
+                    "pool_id": course[8],
+                    "lane_id": course[9],
+                    "price": course[10],
                 }
                 return JsonResponse({"course": current_course_data}, status=200)
             else:
@@ -357,17 +356,28 @@ class WithdrawCourseView(View):
                 return JsonResponse({"error": "Missing required fields."}, status=400)
 
             with connection.cursor() as cursor:
-                # Delete the existing course_schedule entry
+                # Check if the course is currently in-progress
                 cursor.execute("""
-                    DELETE FROM course_schedule
+                    SELECT * FROM course_schedule
                     WHERE swimmer_id = %s AND course_id = %s AND status = 'in-progress'
                 """, [swimmer_id, course_id])
+                course_schedule = cursor.fetchone()
 
-                # Recreate the course_schedule entry with status 'withdrawn'
+                if not course_schedule:
+                    return JsonResponse({"error": "No in-progress course found for the given swimmer and course."}, status=404)
+
+                # Update the status to 'withdrawn' in the course_schedule table
                 cursor.execute("""
-                    INSERT INTO course_schedule (course_id, swimmer_id, status, start_date, end_date, start_time, end_time, day, lifeguard_id)
-                    VALUES (%s, %s, %s, CURRENT_DATE, CURRENT_DATE, '00:00:00', '00:00:00', 'N/A', NULL)
-                """, [course_id, swimmer_id, 'withdrawn'])
+                    UPDATE course_schedule
+                    SET status = 'withdrawn', start_time = %s, end_time = %s, day = %s
+                    WHERE swimmer_id = %s AND course_id = %s
+                """, ['00:00:00', '00:00:00', 'N/A', swimmer_id, course_id])
+
+                # Optionally, log the reason for termination (if you have a separate log table)
+                cursor.execute("""
+                    INSERT INTO withdrawal_logs (swimmer_id, course_id, termination_reason, withdrawn_at)
+                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                """, [swimmer_id, course_id, termination_reason])
 
             return JsonResponse({"message": "Course withdrawn successfully."}, status=200)
 
@@ -1543,25 +1553,24 @@ class DailyCoursesNonmemberView(View):
             with connection.cursor() as cursor:
                 logger.info(f"Fetching daily courses for nonmember_id: {swimmer_id}")
                 cursor.execute("""
-                    SELECT cs.course_id, c.course_name, c.course_image, c.coach_id, c.course_description, 
-                           c.restrictions, c.deadline, c.pool_id, c.lane_id, c.price 
-                    FROM course_schedule cs 
-                    JOIN course c ON cs.course_id = c.course_id 
-                    WHERE cs.swimmer_id = %s 
-                      AND cs.start_date <= CURRENT_DATE 
-                      AND cs.end_date >= CURRENT_DATE 
-                      AND EXTRACT(DOW FROM CURRENT_DATE) = 
-                          CASE 
-                              WHEN cs.day = 'Sunday' THEN 0 
-                              WHEN cs.day = 'Monday' THEN 1 
-                              WHEN cs.day = 'Tuesday' THEN 2 
-                              WHEN cs.day = 'Wednesday' THEN 3 
-                              WHEN cs.day = 'Thursday' THEN 4 
-                              WHEN cs.day = 'Friday' THEN 5 
-                              WHEN cs.day = 'Saturday' THEN 6 
-                              ELSE NULL 
-                          END
+                    SELECT cs.course_id, c.course_name, c.coach_id, c.course_description, 
+                           c.restrictions, c.date, c.start_time, c.end_time, 
+                           c.pool_id, c.lane_id, c.price
+                    FROM course_schedule cs
+                    JOIN course c ON cs.course_id = c.course_id
+                    WHERE cs.swimmer_id = %s
+                      AND c.date = CURRENT_DATE
                       AND cs.status = 'in-progress'
+                      AND cs.day = CASE
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 0 THEN 'Sunday'
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 1 THEN 'Monday'
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 2 THEN 'Tuesday'
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 3 THEN 'Wednesday'
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 4 THEN 'Thursday'
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 5 THEN 'Friday'
+                          WHEN EXTRACT(DOW FROM CURRENT_DATE) = 6 THEN 'Saturday'
+                          ELSE NULL
+                      END
                 """, [swimmer_id])
                 courses = cursor.fetchall()
                 logger.info(f"Courses fetched: {courses}")
@@ -1574,14 +1583,15 @@ class DailyCoursesNonmemberView(View):
                 {
                     "course_id": course[0],
                     "course_name": course[1],
-                    "course_image": course[2],
-                    "coach_id": course[3],
-                    "course_description": course[4],
-                    "restrictions": course[5],
-                    "deadline": course[6],
-                    "pool_id": course[7],
-                    "lane_id": course[8],
-                    "price": course[9]
+                    "coach_id": course[2],
+                    "course_description": course[3],
+                    "restrictions": course[4],
+                    "date": course[5],
+                    "start_time": course[6],
+                    "end_time": course[7],
+                    "pool_id": course[8],
+                    "lane_id": course[9],
+                    "price": course[10],
                 }
                 for course in courses
             ]
@@ -1590,7 +1600,7 @@ class DailyCoursesNonmemberView(View):
         except Exception as e:
             logger.error(f"Error fetching daily courses: {e}")
             return JsonResponse({"error": "An error occurred while fetching courses.", "details": str(e)}, status=500)
-
+        
 @method_decorator(csrf_exempt, name='dispatch')
 class WeeklyCoursesNonmemberView(View):
     def get(self, request):
@@ -1605,16 +1615,16 @@ class WeeklyCoursesNonmemberView(View):
 
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    SELECT c.course_id, c.course_name, c.course_image, c.coach_id, 
-                           c.course_description, c.restrictions, c.deadline, 
-                           c.pool_id, c.lane_id, c.price, cs.start_date, cs.end_date
+                    SELECT c.course_id, c.course_name, c.coach_id, 
+                           c.course_description, c.restrictions, c.date, 
+                           c.start_time, c.end_time, c.pool_id, c.lane_id, c.price, 
+                           cs.day
                     FROM course_schedule cs
                     INNER JOIN course c ON cs.course_id = c.course_id
                     WHERE cs.swimmer_id = %s
                       AND cs.status = 'in-progress'
-                      AND cs.start_date <= %s
-                      AND cs.end_date >= %s
-                """, [nonmember_id, end_of_week, start_of_week])
+                      AND c.date BETWEEN %s AND %s
+                """, [nonmember_id, start_of_week, end_of_week])
 
                 courses = cursor.fetchall()
 
@@ -1625,25 +1635,25 @@ class WeeklyCoursesNonmemberView(View):
                 {
                     "course_id": course[0],
                     "course_name": course[1],
-                    "course_image": course[2],
-                    "coach_id": course[3],
-                    "course_description": course[4],
-                    "restrictions": course[5],
-                    "deadline": course[6],
-                    "pool_id": course[7],
-                    "lane_id": course[8],
-                    "price": course[9],
-                    "start_date": course[10],
-                    "end_date": course[11]
+                    "coach_id": course[2],
+                    "course_description": course[3],
+                    "restrictions": course[4],
+                    "date": course[5],
+                    "start_time": course[6],
+                    "end_time": course[7],
+                    "pool_id": course[8],
+                    "lane_id": course[9],
+                    "price": course[10],
+                    "day": course[11]
                 }
                 for course in courses
             ]
 
             return JsonResponse({"weekly_courses": course_data}, status=200)
+
         except Exception as e:
             print(f"Error in WeeklyCoursesNonmemberView: {str(e)}")
             return JsonResponse({"error": "An error occurred while fetching weekly courses.", "details": str(e)}, status=500)
-
 
     
 @method_decorator(csrf_exempt, name='dispatch')

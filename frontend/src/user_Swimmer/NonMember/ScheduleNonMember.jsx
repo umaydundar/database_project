@@ -14,7 +14,7 @@ const Schedule = () => {
         const fetchSchedule = async () => {
             const nonMemberId = localStorage.getItem("nonMemberId");
             if (!nonMemberId) {
-                setError("Nonmember ID is missing.");
+                setError("Nonmember ID is missing. Please log in again.");
                 setLoading(false);
                 return;
             }
@@ -33,7 +33,7 @@ const Schedule = () => {
                 setError(null);
             } catch (err) {
                 console.error("Error fetching schedule:", err);
-                setError("Failed to fetch schedule.");
+                setError("Failed to fetch schedule. Please try again later.");
             } finally {
                 setLoading(false);
             }
@@ -51,6 +51,7 @@ const Schedule = () => {
                 <div className="schedule-content-container">
                     <h1>Schedule</h1>
 
+                    {/* View Selector */}
                     <div className="view-selector">
                         <button
                             className={`view-btn ${selectedView === "daily" ? "active" : ""}`}
@@ -66,6 +67,7 @@ const Schedule = () => {
                         </button>
                     </div>
 
+                    {/* Schedule List */}
                     <div className="schedule-list">
                         {loading ? (
                             <p>Loading schedule...</p>
@@ -77,7 +79,9 @@ const Schedule = () => {
                                     <h2>{course.course_name}</h2>
                                     <p><strong>Description:</strong> {course.course_description}</p>
                                     <p><strong>Time:</strong> {course.start_time} - {course.end_time}</p>
+                                    <p><strong>Day:</strong> {course.day}</p>
                                     <p><strong>Location:</strong> Pool {course.pool_id}, Lane {course.lane_id}</p>
+                                    <p><strong>Price:</strong> ${course.price}</p>
                                 </div>
                             ))
                         ) : (

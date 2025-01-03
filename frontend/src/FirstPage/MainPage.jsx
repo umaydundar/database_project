@@ -42,10 +42,10 @@ const Main = () => {
                 // Navigate based on user role
                 if (user_role === "non-member") {
                     localStorage.setItem("nonMemberId", user_id);
-                    navigate("/non-member/schedule");
+                    navigate("/non-member/my-courses");
                 } else if (user_role === "member") {    
                     localStorage.setItem("swimmerId", user_id);
-                    navigate("/member/schedule");
+                    navigate("/member/my-courses");
                 } else if (user_role === "coach") {
                     localStorage.setItem("coachId", user_id);
                     navigate("/coach/schedule");
