@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Sidebar from "./LayoutNonMember.jsx";
 import "./ProfileNonMember.css";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
     const [userData, setUserData] = useState(null); // Store user data
@@ -11,6 +12,7 @@ const Profile = () => {
     const [selectedFile, setSelectedFile] = useState(null); // Selected profile picture file
     const [loading, setLoading] = useState(true); // Loading state
     const [error, setError] = useState(""); // Error message
+    const navigate = useNavigate();
 
     // Fetch profile data
     useEffect(() => {
@@ -116,6 +118,10 @@ const Profile = () => {
     const handleLogout = () => {
         localStorage.removeItem("nonMemberId");
         alert("Logged out successfully!");
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userPoints'); // Clear user points on logout
+        localStorage.removeItem('balance'); // Clear balance on logout
+        navigate('/');
     };
 
     if (loading) return <div>Loading...</div>;

@@ -6,7 +6,7 @@ import axios from "axios";
 const ViewCourses = () => {
   const [currentCourses, setCurrentCourses] = useState([]);
   const [previousCourses, setPreviousCourses] = useState([]);
-  const [view, setView] = useState("upcoming"); 
+  const [view, setView] = useState("upcoming");
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseStudents, setCourseStudents] = useState([]);
   const [error, setError] = useState("");
@@ -31,7 +31,7 @@ const ViewCourses = () => {
       } catch (err) {
         setError("Failed to fetch current courses.");
         console.error(err);
-      } 
+      }
     };
 
     const fetchPreviousCourses = async () => {
@@ -51,7 +51,7 @@ const ViewCourses = () => {
       } catch (err) {
         setError("Failed to fetch previous courses.");
         console.error(err);
-      } 
+      }
     };
 
     fetchCurrentCourses();
@@ -137,9 +137,7 @@ const ViewCourses = () => {
   };
 
   const filteredCourses =
-    view === "upcoming"
-      ? currentCourses 
-      : previousCourses || [];
+    view === "upcoming" ? currentCourses : previousCourses || [];
 
   const handleClosePopup = () => {
     setSelectedCourse(null);
@@ -147,74 +145,74 @@ const ViewCourses = () => {
 
   return (
     <LayoutCoach>
-      <div className="view-courses-container ">
+      <div className="view-courses-container">
         <h1 className="view-courses-heading">View Courses</h1>
 
         {/* Error Handling */}
         {error && <p className="error-message">{error}</p>}
-        <>
-          {/* View Selector */}
-          <div className="view-selector">
-            <button
-              className={`view-btn ${view === "upcoming" ? "active" : ""}`}
-              onClick={() => setView("upcoming")}
-            >
-              Upcoming Courses
-            </button>
-            <button
-              className={`view-btn ${view === "past" ? "active" : ""}`}
-              onClick={() => setView("past")}
-            >
-              Past Courses
-            </button>
-          </div>
 
-          {/* Course List */}
-          <div className="course-list">
-            {filteredCourses.length > 0 ? (
-              filteredCourses.map((course) => (
-                <div key={course.course_id} className="course-item">
-                  <div className="course-info">
-                    <h3>{course.course_name}</h3>
-                    <p>
-                      {course.course_description} | {course.deadline}
-                    </p>
-                    <p>{"Course Location: Pool" + course.pool_id}</p>
-                    <p>{"Lane" + course.lane_id}</p>
-                  </div>
-                  <div className="course-actions">
-                    {view === "upcoming" && (
-                      <button
-                        className="cancel-btn"
-                        onClick={() => handleCancel(course.course_id)}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                    {view === "upcoming" && (
-                      <button
-                        className="finish-btn"
-                        onClick={() => handleFinish(course.course_id)}
-                      >
-                        Finish
-                      </button>
-                    )}
-                    <button
-                      className="details-btn"
-                      onClick={() => {setSelectedCourse(course)
-                        handleSelectedStudents(course)
-                      }}
-                    >
-                      See Details
-                    </button>
-                  </div>
+        {/* View Selector */}
+        <div className="view-selector">
+          <button
+            className={`view-btn ${view === "upcoming" ? "active" : ""}`}
+            onClick={() => setView("upcoming")}
+          >
+            Upcoming Courses
+          </button>
+          <button
+            className={`view-btn ${view === "past" ? "active" : ""}`}
+            onClick={() => setView("past")}
+          >
+            Past Courses
+          </button>
+        </div>
+
+        {/* Course List */}
+        <div className="course-list">
+          {filteredCourses.length > 0 ? (
+            filteredCourses.map((course) => (
+              <div key={course.course_id} className="course-item">
+                <div className="course-info">
+                  <h3>{course.course_name}</h3>
+                  <p>
+                    {course.course_description} | {course.deadline}
+                  </p>
+                  <p>{"Course Location: Pool" + course.pool_id}</p>
+                  <p>{"Lane" + course.lane_id}</p>
                 </div>
-              ))
-            ) : (
-              <p className="no-courses-message">No courses available.</p>
-            )}
-          </div>
-        </>
+                <div className="course-actions">
+                  {view === "upcoming" && (
+                    <button
+                      className="cancel-btn"
+                      onClick={() => handleCancel(course.course_id)}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {view === "upcoming" && (
+                    <button
+                      className="finish-btn"
+                      onClick={() => handleFinish(course.course_id)}
+                    >
+                      Finish
+                    </button>
+                  )}
+                  <button
+                    className="details-btn"
+                    onClick={() => {
+                      setSelectedCourse(course);
+                      handleSelectedStudents(course);
+                    }}
+                  >
+                    See Details
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="no-courses-message">No courses available.</p>
+          )}
+        </div>
 
         {/* Course Details Popup */}
         {selectedCourse && (
@@ -238,20 +236,23 @@ const ViewCourses = () => {
               </p>
               <h3>Students</h3>
               <ul className="students-list">
-              {courseStudents.length > 0 ? (
-                courseStudents.map((student) => (
-                  <li key={student.id} className="student-item">
-                    <img 
-                      src={student.profilePhoto || "https://upload.wikimedia.org/wikipedia/commons/2/2c/Default_pfp.svg"} 
-                      alt={student.name} 
-                    />
-                    <span>{student.name}</span>
-                    <span>{student.surname}</span>
-                  </li>
-                ))
-              ) : (
-                <p>No students registered for this course.</p>
-              )}
+                {courseStudents.length > 0 ? (
+                  courseStudents.map((student) => (
+                    <li key={student.id} className="student-item">
+                      <img
+                        src={
+                          student.profilePhoto ||
+                          "https://upload.wikimedia.org/wikipedia/commons/2/2c/Default_pfp.svg"
+                        }
+                        alt={student.name}
+                      />
+                      <span>{student.name}</span>
+                      <span>{student.surname}</span>
+                    </li>
+                  ))
+                ) : (
+                  <p>No students registered for this course.</p>
+                )}
               </ul>
               <button className="close-popup-btn" onClick={handleClosePopup}>
                 Close
