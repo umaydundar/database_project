@@ -79,9 +79,10 @@ const ManageCourses = () => {
                             <tr>
                                 <th>ID</th>
                                 <th>Course Name</th>
-                                <th>Course Code</th>
-                                <th>Instructor</th>
-                                <th>Credits</th>
+                                <th>Course Pool</th>
+                                <th>Course Lane</th>
+                                <th>Coach</th>
+                                <th>Capacity</th>
                                 <th>Actions</th>
                             </tr>
                             </thead>
@@ -97,9 +98,10 @@ const ManageCourses = () => {
                                     <tr key={course.course_id}>
                                         <td>{course.course_id}</td>
                                         <td>{course.course_name}</td>
-                                        <td>{course.course_code || "N/A"}</td>
-                                        <td>{course.instructor || "N/A"}</td>
-                                        <td>{course.credits || "N/A"}</td>
+                                        <td>{course.pool_id || "N/A"}</td>
+                                        <td>{course.lane_id || "N/A"}</td>
+                                        <td>{course.coach_id || "N/A"}</td>
+                                        <td>{course.capacity || "N/A"}</td>
                                         <td>
                                             <button
                                                 onClick={() => handleViewCourse(course.course_id)}

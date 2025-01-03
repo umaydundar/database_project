@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
-import 'boxicons/css/boxicons.min.css'; // Boxicons CSS'ini import edin
+import 'boxicons/css/boxicons.min.css';
+import axios from 'axios';
 
 const Sidebar = () => {
   const location = useLocation();
@@ -23,6 +24,8 @@ const Sidebar = () => {
   const [cvv, setCvv] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [venmoUsername, setVenmoUsername] = useState('');
+  const [error, setError] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // States for feedback messages
   const [formError, setFormError] = useState('');
@@ -131,6 +134,39 @@ const Sidebar = () => {
     localStorage.removeItem('balance'); // Clear balance on logout
     navigate('/'); // Redirect to Home or Login page
   };
+
+  const handleBalanceAdd=async () =>{
+    try {
+      var swimmerId = localStorage.getItem("swimmerId");
+      if(!swimmerId)
+      {
+        swimmerId = localStorage.getItem("nonMemberId");
+      }
+      console.log(swimmerId);
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/deposit_money/",
+        { "simmer_id": swimmerId, "amount": amount }, // Request body
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true, 
+        }
+      );
+
+      if (response.status === 200) {
+        alert("Deposit successful!");
+        setBalance((prevBalance) => prevBalance + amount); 
+      } else {
+        setError(response.data.error || "Failed to deposit money.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred.");
+      console.error(err);
+    } finally {
+      setIsProcessing(false);
+    }
+  }
 
   return (
       <div className="sidebar always-open">
@@ -346,7 +382,7 @@ const Sidebar = () => {
                   {formError && <p className="error-message">{formError}</p>}
                   {formSuccess && <p className="success-message">{formSuccess}</p>}
                   <div className="form-actions">
-                    <button type="submit" className="submit-button">Add Money</button>
+                    <button type="submit" className="submit-button" onClick={handleBalanceAdd}>Add Money</button>
                     <button type="button" className="cancel-button" onClick={closeModal}>Cancel</button>
                   </div>
                 </form>
