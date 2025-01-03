@@ -17,7 +17,7 @@ const Profile = () => {
     // Fetch profile data
     useEffect(() => {
         const fetchProfile = async () => {
-            const userId = localStorage.getItem("nonMemberId"); // Get user ID from local storage
+            const userId = localStorage.getItem("userId"); // Get user ID from local storage
             if (!userId) {
                 setError("User not logged in.");
                 setLoading(false);
@@ -64,7 +64,7 @@ const Profile = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const userId = localStorage.getItem("nonMemberId");
+        const userId = localStorage.getItem("userId");
 
         if (!userId) {
             alert("User not logged in.");
@@ -116,7 +116,7 @@ const Profile = () => {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem("nonMemberId");
+        localStorage.removeItem("userId");
         alert("Logged out successfully!");
         localStorage.removeItem('userRole');
         localStorage.removeItem('userPoints'); // Clear user points on logout
