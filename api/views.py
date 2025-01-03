@@ -1286,7 +1286,7 @@ class GetCoachView(View):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT balance FROM worker WHERE worker_id = %s", [user[0]])
-            balance = cursor.fetchone()        
+            balance = cursor.fetchone()[0]      
         
         
         if user:
@@ -1719,8 +1719,66 @@ class CoachCoursesView(View):
                 "deadline": course[6],
                 "pool_id": course[7],
                 "lane_id": course[8],
-                "price": course[9]
+                "price": course[9],
+                "capacity": course[10]
                 } 
+            course_data.append(course)
+        
+        return JsonResponse({"coach_courses": course_data})
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class CoachCoursesUpcomingView(View):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        coach_id = request.GET.get('coach_id')
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE coach_id=%s AND status='in-progress')", [coach_id])
+            courses = cursor.fetchall()
+        
+        course_data = []
+        for course in courses:
+            course= {
+                "course_id": course[0],
+                "course_name": course[1],
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9],
+                "capacity": course[10]
+                } 
+            course_data.append(course)
+        
+        return JsonResponse({"coach_courses": course_data})
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class CoachCoursesPreviousView(View):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        coach_id = request.GET.get('coach_id')
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE coach_id=%s AND (status='cancelled' OR status='finished'))", [coach_id])
+            courses = cursor.fetchall()
+        
+        course_data = []
+        for course in courses:
+            course= {
+                "course_id": course[0],
+                "course_name": course[1],
+                "course_image": course[2],
+                "coach_id": course[3],
+                "course_description": course[4],
+                "restrictions": course[5],
+                "deadline": course[6],
+                "pool_id": course[7],
+                "lane_id": course[8],
+                "price": course[9],
+                "capacity": course[10]
+                } 
+            course_data.append(course)
         
         return JsonResponse({"coach_courses": course_data})
 
@@ -2151,12 +2209,28 @@ class FinishCourseView(View):
             course_price = course[9]
             
             cursor.execute("SELECT COUNT(*) FROM buying_history WHERE course_id=%s", [course_id])
-            participant_count = cursor.fetchone[0]
+            participant_count = cursor.fetchone()[0]
             course_price = (course_price * participant_count * 60)/100.0
             
             cursor.execute("UPDATE worker SET balance = balance+ %s WHERE worker_id=%s",[course_price, coach_id])
 
         return JsonResponse({"message": "Course marked as finished successfully"})
+    
+@method_decorator(csrf_exempt, name='dispatch')
+class CancelCourseView(View):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        data = json.loads(request.body)
+        course_id = data.get("course_id")
+        coach_id  = data.get("coach_id")
+        
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE course_schedule SET status = 'cancelled' WHERE course_id = %s AND coach_id=%s",
+                [course_id, coach_id],
+            )
+            
+        return JsonResponse({"message": "Course marked as cancelled successfully"})
     
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -2250,3 +2324,31 @@ class GetUserBuyingHistoryView(View):
             } 
             buying_history_data.append(buying_history)
         return JsonResponse({"buying_history": buying_history_data})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GetCourseStudentsView(View):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        course_id = request.GET.get('course_id')
+        print(course_id)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM all_users WHERE user_id IN (SELECT swimmer_id FROM course_schedule WHERE course_id=%s)", [course_id])
+            students = cursor.fetchall()
+        
+        course_students = []
+        for user in students:
+            student={
+                "user_id": user[0],
+                "user_image": user[1],
+                "name": user[2],
+                "surname": user[3],
+                "username": user[4],
+                "password": user[5],
+                "user_type": user[6],
+                "email": user[7],
+            } 
+            course_students.append(student)
+            
+        return JsonResponse({"students": course_students})
+

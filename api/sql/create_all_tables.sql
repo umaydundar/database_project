@@ -120,6 +120,7 @@ CREATE TABLE course (
     pool_id INT NOT NULL,
     lane_id INT NOT NULL,
     price INT NOT NULL,
+    capacity INT,
     FOREIGN KEY (coach_id) REFERENCES coach(coach_id),
     FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
     FOREIGN KEY (lane_id) REFERENCES lane(lane_id)
@@ -129,12 +130,12 @@ CREATE TABLE course_schedule(
     course_schedule_id SERIAL,
     course_id INT,
     swimmer_id INT,
-    lifeguard_id INT,
+    coach_id INT,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     status VARCHAR(255),
     FOREIGN KEY (swimmer_id) REFERENCES swimmer(swimmer_id),
-    FOREIGN KEY (lifeguard_id) REFERENCES lifeguard(lifeguard_id),
+    FOREIGN KEY (coach_id) REFERENCES coach(coach_id),
     FOREIGN KEY (course_id) REFERENCES course(course_id),
     PRIMARY KEY (course_schedule_id, course_id),
     CHECK (status IN ('not-enrolled', 'in-progress', 'withdrawn', 'finished', 'cancelled'))
