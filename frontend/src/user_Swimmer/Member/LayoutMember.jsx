@@ -171,12 +171,6 @@ const LayoutMember = () => {
                 <span className="link">All Courses</span>
               </Link>
             </li>
-            <li className={`list ${location.pathname === '/member/cafe' ? 'active' : ''}`}>
-              <Link to="/member/cafe" className="nav-link">
-                <i class="bx bx-coffee icon"></i>
-                <span className="link">Cafe</span>
-              </Link>
-            </li>
           </ul>
 
           {/* Logout Button */}

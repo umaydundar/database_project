@@ -220,28 +220,10 @@ const LayoutNonMember = () => {
                 <span className="link">My Courses</span>
               </Link>
             </li>
-            <li className={`list ${location.pathname === '/non-member/upcoming-bookings' ? 'active' : ''}`}>
-              <Link to="/non-member/upcoming-bookings" className="nav-link">
-                <i className='bx bx-calendar-event icon'></i>
-                <span className="link">Upcoming Bookings</span>
-              </Link>
-            </li>
             <li className={`list ${location.pathname === '/non-member/all-courses' ? 'active' : ''}`}>
               <Link to="/non-member/all-courses" className="nav-link">
                 <i className="bx bx-book-open icon"></i>
                 <span className="link">All Courses</span>
-              </Link>
-            </li>
-            <li className={`list ${location.pathname === '/non-member/book-pool-lane' ? 'active' : ''}`}>
-              <Link to="/non-member/book-pool-lane" className="nav-link">
-                <i className="bx bx-swim icon"></i>
-                <span className="link">Book a Pool Lane</span>
-              </Link>
-            </li>
-            <li className={`list ${location.pathname === '/non-member/my-cart' ? 'active' : ''}`}>
-              <Link to="/non-member/my-cart" className="nav-link">
-                <i className="bx bx-cart icon"></i>
-                <span className="link">My Cart</span>
               </Link>
             </li>
             <li className={`list ${location.pathname === '/non-member/membership' ? 'active' : ''}`}>
