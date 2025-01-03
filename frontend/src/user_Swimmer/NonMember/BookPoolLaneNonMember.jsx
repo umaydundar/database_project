@@ -1,34 +1,9 @@
-// BookPoolLane.jsx
 import React, { useState, useEffect } from 'react';
 import Sidebar from './LayoutNonMember.jsx';
 import './BookPoolLaneNonMember.css';
+import axios from 'axios';
 
 const BookPoolLane = () => {
-    const poolLanes = [1, 2, 3, 4, 5];
-    const timeSlots = [
-        '06:00 AM - 07:00 AM',
-        '07:00 AM - 08:00 AM',
-        '08:00 AM - 09:00 AM',
-        '09:00 AM - 10:00 AM',
-        '10:00 AM - 11:00 AM',
-        '11:00 AM - 12:00 PM',
-        '12:00 PM - 01:00 PM',
-        '01:00 PM - 02:00 PM',
-        '02:00 PM - 03:00 PM',
-        '03:00 PM - 04:00 PM',
-        '04:00 PM - 05:00 PM',
-        '05:00 PM - 06:00 PM',
-        '06:00 PM - 07:00 PM',
-        '07:00 PM - 08:00 PM',
-        '08:00 PM - 09:00 PM',
-    ];
-
-    // Initialize bookings from localStorage or as an empty array
-    const [bookings, setBookings] = useState(() => {
-        const savedBookings = localStorage.getItem('bookpoollane-bookings');
-        return savedBookings ? JSON.parse(savedBookings) : [];
-    });
-
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedLane, setSelectedLane] = useState('');
     const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
@@ -36,35 +11,39 @@ const BookPoolLane = () => {
     const [availableLanes, setAvailableLanes] = useState([]);
     const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
     const [errorMessage, setErrorMessage] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    // Synchronize bookings with localStorage whenever bookings change
-    useEffect(() => {
-        localStorage.setItem('bookpoollane-bookings', JSON.stringify(bookings));
-    }, [bookings]);
+    // Fetch available lanes for the selected date
+    const fetchLanes = async (date) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`http://127.0.0.1:8000/api/get_available_lanes/?date=${date}`);
+            setAvailableLanes(response.data.lanes || []);
+            setAvailableTimeSlots([]);
+            setSelectedLane('');
+            setSelectedTimeSlot('');
+        } catch (error) {
+            console.error('Error fetching lanes:', error);
+            setErrorMessage('Failed to fetch available lanes. Please try again later.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // Mock availability data
-    const availabilityData = {
-        '2024-12-05': {
-            1: ['06:00 AM - 07:00 AM', '07:00 AM - 08:00 AM'],
-            2: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM'],
-            3: [],
-            4: ['01:00 PM - 02:00 PM'],
-            5: ['06:00 PM - 07:00 PM'],
-        },
-        '2025-01-04': {
-            1: ['06:00 AM - 07:00 AM', '07:00 AM - 08:00 AM'],
-            2: ['09:00 AM - 10:00 AM', '10:00 AM - 11:00 AM'],
-            3: [],
-            4: ['01:00 PM - 02:00 PM'],
-            5: ['06:00 PM - 07:00 PM'],
-        },
-        '2025-01-05': {
-            1: [],
-            2: ['08:00 AM - 09:00 AM', '10:00 AM - 11:00 AM'],
-            3: ['11:00 AM - 12:00 PM', '12:00 PM - 01:00 PM'],
-            4: [],
-            5: ['04:00 PM - 05:00 PM'],
-        },
+    // Fetch available time slots for the selected lane and date
+    const fetchTimeSlots = async (date, lane) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(
+                `http://127.0.0.1:8000/api/get_available_time_slots/?date=${date}&lane_id=${lane}`
+            );
+            setAvailableTimeSlots(response.data.time_slots || []);
+        } catch (error) {
+            console.error('Error fetching time slots:', error);
+            setErrorMessage('Failed to fetch available time slots. Please try again later.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDateChange = (e) => {
@@ -84,28 +63,7 @@ const BookPoolLane = () => {
             return;
         }
 
-        const availableLanesForDate = Object.keys(availabilityData[date] || {}).filter(
-            (lane) => availabilityData[date][lane].length > 0
-        );
-
-        // Additionally, remove lanes already booked for the selected date
-        const bookedLanes = bookings
-            .filter((booking) => booking.date === date)
-            .map((booking) => booking.lane.toString());
-
-        const finalAvailableLanes = availableLanesForDate.filter(
-            (lane) => !bookedLanes.includes(lane)
-        );
-
-        if (finalAvailableLanes.length === 0) {
-            showError('All lanes are fully booked for this date. Please select another day.');
-            setSelectedDate('');
-        } else {
-            setAvailableLanes(finalAvailableLanes);
-            setSelectedLane('');
-            setSelectedTimeSlot('');
-            setAvailableTimeSlots([]);
-        }
+        fetchLanes(date);
     };
 
     const handleLaneChange = (e) => {
@@ -113,21 +71,11 @@ const BookPoolLane = () => {
         setSelectedLane(lane);
 
         if (selectedDate && lane) {
-            const slots = availabilityData[selectedDate]?.[lane] || [];
-            // Additionally, remove time slots already booked for this lane and date
-            const bookedSlots = bookings
-                .filter((booking) => booking.date === selectedDate && booking.lane === lane)
-                .map((booking) => booking.timeSlot);
-
-            const finalAvailableSlots = slots.filter(
-                (slot) => !bookedSlots.includes(slot)
-            );
-
-            setAvailableTimeSlots(finalAvailableSlots);
+            fetchTimeSlots(selectedDate, lane);
         }
     };
 
-    const handleBooking = (e) => {
+    const handleBooking = async (e) => {
         e.preventDefault();
 
         if (!selectedDate || !selectedLane || !selectedTimeSlot) {
@@ -135,21 +83,38 @@ const BookPoolLane = () => {
             return;
         }
 
-        const newBooking = {
-            id: Date.now(),
-            date: selectedDate,
-            timeSlot: selectedTimeSlot,
-            lane: selectedLane,
-        };
+        try {
+            const nonMemberId = localStorage.getItem('nonMemberId');
+            if (!nonMemberId) {
+                alert('Please log in to book a lane.');
+                return;
+            }
 
-        setBookings([...bookings, newBooking]);
-        setConfirmation(newBooking);
+            const response = await axios.post('http://127.0.0.1:8000/api/book_lane/', {
+                swimmer_id: nonMemberId,
+                lane_id: selectedLane,
+                date: selectedDate,
+                start_time: selectedTimeSlot.split(' - ')[0],
+                end_time: selectedTimeSlot.split(' - ')[1],
+            });
 
-        setSelectedDate('');
-        setSelectedLane('');
-        setSelectedTimeSlot('');
-        setAvailableTimeSlots([]);
-        setAvailableLanes([]);
+            if (response.status === 201) {
+                setConfirmation({
+                    date: selectedDate,
+                    lane: selectedLane,
+                    timeSlot: selectedTimeSlot,
+                });
+                setSelectedDate('');
+                setSelectedLane('');
+                setSelectedTimeSlot('');
+                setAvailableTimeSlots([]);
+                setAvailableLanes([]);
+                alert(response.data.message);
+            }
+        } catch (error) {
+            console.error('Error booking lane:', error);
+            setErrorMessage('Failed to book lane. Please try again later.');
+        }
     };
 
     const showError = (message) => {
@@ -186,12 +151,12 @@ const BookPoolLane = () => {
                                 value={selectedLane}
                                 onChange={handleLaneChange}
                                 required
-                                disabled={!selectedDate || availableLanes.length === 0}
+                                disabled={!selectedDate || availableLanes.length === 0 || loading}
                             >
                                 <option value="">--Select Lane--</option>
                                 {availableLanes.map((lane) => (
-                                    <option key={lane} value={lane}>
-                                        Lane {lane}
+                                    <option key={lane.lane_id} value={lane.lane_id}>
+                                        Lane {lane.lane_id}
                                     </option>
                                 ))}
                             </select>
@@ -204,7 +169,7 @@ const BookPoolLane = () => {
                                 value={selectedTimeSlot}
                                 onChange={(e) => setSelectedTimeSlot(e.target.value)}
                                 required
-                                disabled={!selectedLane || availableTimeSlots.length === 0}
+                                disabled={!selectedLane || availableTimeSlots.length === 0 || loading}
                             >
                                 <option value="">--Select Time Slot--</option>
                                 {availableTimeSlots.map((slot, index) => (
@@ -215,8 +180,8 @@ const BookPoolLane = () => {
                             </select>
                         </div>
 
-                        <button type="submit" className="bookpoollane-submit-button">
-                            Book Lane
+                        <button type="submit" className="bookpoollane-submit-button" disabled={loading}>
+                            {loading ? 'Booking...' : 'Book Lane'}
                         </button>
                     </form>
 
@@ -234,7 +199,6 @@ const BookPoolLane = () => {
                             </p>
                         </div>
                     )}
-
                 </div>
             </div>
         </div>

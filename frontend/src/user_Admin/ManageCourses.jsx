@@ -4,8 +4,6 @@ import "./ManageCourses.css";
 
 const ManageCourses = () => {
     const [courses, setCourses] = useState([]);
-
-    // Modal görünürlüğü ve seçili kurs için state'ler
     const [showModal, setShowModal] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState(null);
 
@@ -13,10 +11,10 @@ const ManageCourses = () => {
         // Backend'den kursları çekme
         const fetchCourses = async () => {
             try {
-                const response = await fetch("http://127.0.0.1:8000/api/all_courses/");
+                const response = await fetch("http://127.0.0.1:8000/api/get_all_courses/");
                 if (response.ok) {
                     const data = await response.json();
-                    setCourses(data.courses); // Backend'den gelen kurs listesini set ediyoruz
+                    setCourses(data.courses); 
                 } else {
                     console.error("Error fetching courses:", response.statusText);
                 }
@@ -51,14 +49,6 @@ const ManageCourses = () => {
         }
     };
 
-    // "View" butonuna tıklanınca modal'ı açıp seçili kursu kaydeder
-    const handleViewCourse = (courseId) => {
-        const foundCourse = courses.find((course) => course.course_id === courseId);
-        if (foundCourse) {
-            setSelectedCourse(foundCourse);
-            setShowModal(true);
-        }
-    };
 
     // Modal'ı kapatma fonksiyonu
     const handleCloseModal = () => {
@@ -103,12 +93,6 @@ const ManageCourses = () => {
                                         <td>{course.coach_id || "N/A"}</td>
                                         <td>{course.capacity || "N/A"}</td>
                                         <td>
-                                            <button
-                                                onClick={() => handleViewCourse(course.course_id)}
-                                                className="manage-courses-view-button"
-                                            >
-                                                View
-                                            </button>
                                             <button
                                                 onClick={() => handleDelete(course.course_id)}
                                                 className="manage-courses-delete-button"

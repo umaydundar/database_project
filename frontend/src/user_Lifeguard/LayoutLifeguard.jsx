@@ -22,7 +22,7 @@ const LayoutLifeguard = ({ children }) => {
                 throw new Error("Worker ID not found. Please log in again.");
             }
 
-            const response = await axios.get(`http://127.0.0.1:8000/api/get_balance//?worker_id=${workerId}`);
+            const response = await axios.get(`http://127.0.0.1:8000/api/get_balance/?worker_id=${workerId}`);
             setTotalMoney(response.data.balance);
         } catch (err) {
             console.error("Error fetching balance:", err);
@@ -69,16 +69,6 @@ const LayoutLifeguard = ({ children }) => {
 
                     {/* Balance View */}
                     <div className="balance-container">
-                        {loading ? (
-                            <span>Loading balance...</span>
-                        ) : error ? (
-                            <span className="error">{error}</span>
-                        ) : (
-                            <div className="balance-view">
-                                <span className="balance-label">Balance:</span>
-                                <span className="balance-amount">{totalMoney} TL</span>
-                            </div>
-                        )}
                         {loading ? (
                             <span>Loading balance...</span>
                         ) : error ? (

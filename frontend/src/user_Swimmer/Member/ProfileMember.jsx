@@ -146,6 +146,7 @@ const Profile = () => {
                         />
                         {!isEditing ? (
                             <div className="profile-details">
+                                <p><strong>Membership Status: MEMBER</strong></p>
                                 <p><strong>Name:</strong> {`${userData.forename} ${userData.surname}`}</p>
                                 <p><strong>Email:</strong> {userData.email}</p>
                                 <p>

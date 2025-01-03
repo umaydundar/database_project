@@ -61,70 +61,6 @@ const Sidebar = () => {
     setVenmoUsername('');
   };
 
-  // Function to handle form submission
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-
-    // Basic form validation
-    if (!amount || amount <= 0) {
-      setFormError('Please enter a valid positive amount.');
-      setFormSuccess('');
-      return;
-    }
-
-    // Payment method specific validation
-    if (paymentMethod === 'creditCard') {
-      const cardNumberRegex = /^\d{16}$/;
-      if (!cardNumberRegex.test(cardNumber)) {
-        setFormError('Please enter a valid 16-digit card number.');
-        setFormSuccess('');
-        return;
-      }
-
-      const expiryDateRegex = /^(0[1-9]|1[0-2])\/\d{2}$/;
-      if (!expiryDateRegex.test(expiryDate)) {
-        setFormError('Please enter a valid expiry date in MM/YY format.');
-        setFormSuccess('');
-        return;
-      }
-
-      const cvvRegex = /^\d{3}$/;
-      if (!cvvRegex.test(cvv)) {
-        setFormError('Please enter a valid 3-digit CVV.');
-        setFormSuccess('');
-        return;
-      }
-    } else if (paymentMethod === 'paypal') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(paypalEmail)) {
-        setFormError('Please enter a valid PayPal email address.');
-        setFormSuccess('');
-        return;
-      }
-    } else if (paymentMethod === 'venmo') {
-      if (!venmoUsername.trim()) {
-        setFormError('Please enter your Venmo username.');
-        setFormSuccess('');
-        return;
-      }
-    }
-
-    // **Important:** In production, handle payment processing securely using a payment gateway.
-
-    // Simulate adding money (for demonstration purposes)
-    const newBalance = balance + parseFloat(amount);
-    setBalance(newBalance);
-    localStorage.setItem('balance', newBalance.toString());
-
-    // Provide success feedback
-    setFormSuccess(`Successfully added ${parseFloat(amount)} TL to your balance.`);
-    setFormError('');
-
-    // Optionally, close the modal after a delay
-    setTimeout(() => {
-      closeModal();
-    }, 2000);
-  };
 
   const handleLogout = () => {
     // Perform logout operations here (e.g., remove tokens)
@@ -136,6 +72,7 @@ const Sidebar = () => {
   };
 
   const handleBalanceAdd=async () =>{
+    console.log("handle balance called");
     try {
       var swimmerId = localStorage.getItem("swimmerId");
       if(!swimmerId)
@@ -145,7 +82,7 @@ const Sidebar = () => {
       console.log(swimmerId);
       const response = await axios.post(
         "http://127.0.0.1:8000/api/deposit_money/",
-        { "simmer_id": swimmerId, "amount": amount }, // Request body
+        { "swimmer_id": swimmerId, "amount": amount }, // Request body
         {
           headers: {
             "Content-Type": "application/json",
@@ -270,7 +207,7 @@ const Sidebar = () => {
             <div className="modal-overlay" onClick={closeModal}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <h2>Add Money to Balance</h2>
-                <form onSubmit={handleFormSubmit} className="add-money-form">
+                <form onSubmit={handleBalanceAdd} className="add-money-form">
                   <div className="form-group">
                     <label htmlFor="amount">Amount to Add<span className="required">*</span></label>
                     <input

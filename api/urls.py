@@ -82,5 +82,8 @@ urlpatterns = [
     path('nonmember_courses/', CoursesNonmemberView.as_view(), name='nonmember_courses'),
     path('upload_profile_picture/', upload_profile_picture, name='upload_profile_picture'),
     path('course_students/', GetCourseStudentsView.as_view(), name='get_course_students'),
+    path("lifeguard_cancel_shift/", CancelLifeguardShiftView.as_view(), name="cancel_lifeguard_shift"),
+    path("lifeguard_avaliable_shift/", GetAvailableLanesView.as_view(), name="avaliable_lifeguard_shift"),
+    path('course_students/', GetCourseStudentsView.as_view(), name='get_course_students'),
      path('get_all_courses/', GetAllCoursesView.as_view(), name='get_all_courses')
 ]
