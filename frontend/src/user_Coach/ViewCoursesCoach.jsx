@@ -10,23 +10,25 @@ const ViewCourses = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseStudents, setCourseStudents] = useState([]);
   const [error, setError] = useState("");
+  const coachId = localStorage.getItem("userId");
 
   const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     const fetchCurrentCourses = async () => {
       try {
-        const coachId = localStorage.getItem("coachId");
-        if (!coachId) {
-          setError("Coach ID not found. Please log in again.");
-          return;
-        }
-
         const response = await axios.get(
-          `http://127.0.0.1:8000/api/coach_courses_current/?coach_id=${coachId}`
+          "http://127.0.0.1:8000/api/coach_courses_current/",
+          {
+              params: {coachId},
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              withCredentials: true,
+          }
         );
+
         console.log(response);
-        console.log(response.data.coach_courses);
         setCurrentCourses(response.data.coach_courses);
       } catch (err) {
         setError("Failed to fetch current courses.");
@@ -36,15 +38,17 @@ const ViewCourses = () => {
 
     const fetchPreviousCourses = async () => {
       try {
-        const coachId = localStorage.getItem("coachId");
-        if (!coachId) {
-          setError("Coach ID not found. Please log in again.");
-          return;
-        }
-
         const response = await axios.get(
-          `http://127.0.0.1:8000/api/coach_courses_previous/?coach_id=${coachId}`
+          "http://127.0.0.1:8000/api/coach_courses_previous/",
+          {
+              params: {coachId},
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              withCredentials: true,
+          }
         );
+
         console.log(response);
         console.log(response.data.coach_courses);
         setPreviousCourses(response.data.coach_courses);
@@ -85,7 +89,6 @@ const ViewCourses = () => {
 
   const handleFinish = async (courseId) => {
     try {
-      const coachId = localStorage.getItem("coachId");
       const response = await axios.post(
         `http://127.0.0.1:8000/api/finish_course/`,
         { "course_id": courseId, "coach_id": coachId },
@@ -177,10 +180,10 @@ const ViewCourses = () => {
                   <div className="course-info">
                     <h3>{course.course_name}</h3>
                     <p>
-                      {course.course_description} | {course.deadline}
+                       {course.date} | {course.start_time} - {course.end_time} | {course.course_description}
                     </p>
-                    <p>{"Course Location: Pool" + course.pool_id}</p>
-                    <p>{"Lane" + course.lane_id}</p>
+                    <p>{"Course Location: Pool " + course.pool_id}</p>
+                    <p>{"Lane " + course.lane_id}</p>
                   </div>
                   <div className="course-actions">
                     {view === "upcoming" && (
@@ -225,13 +228,13 @@ const ViewCourses = () => {
                 <strong>Title:</strong> {selectedCourse.course_name}
               </p>
               <p>
-                <strong>Date:</strong> {selectedCourse.course_description}
+                <strong>Date:</strong> {selectedCourse.date}
               </p>
               <p>
-                <strong>Time:</strong> {selectedCourse.deadline}
+                <strong>Time:</strong> {selectedCourse.start_time} - {selectedCourse.end_time}
               </p>
               <p>
-                <strong>Location:</strong> {"Pool" + selectedCourse.pool_id}
+                <strong>Location:</strong> {"Pool " + selectedCourse.pool_id}
               </p>
               <p>
                 <strong>Capacity:</strong> {selectedCourse.capacity}

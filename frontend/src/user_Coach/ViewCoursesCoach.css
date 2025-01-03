@@ -58,6 +58,7 @@
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: var(--text-color);
   }
   
   .course-info h3 {
@@ -120,6 +121,7 @@
     padding: 20px;
     width: 400px;
     text-align: center;
+    color: var(--text-color);
   }
   
   .students-list {
