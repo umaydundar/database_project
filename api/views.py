@@ -166,29 +166,49 @@ class ChangePasswordView(View):
             return JsonResponse({"error": "Invalid username or old password"}, status=400)
 @method_decorator(csrf_exempt, name='dispatch')
 class AllCoursesView(View):
-    permission_classes = [AllowAny]
     def get(self, request):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course")
-            courses = cursor.fetchall()
-        
-        all_course_data = []
-        for course in courses:
-            all_course_data = {
-                "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[5],
-                "pool_id": course[6],
-                "lane_id": course[7],
-                "price": course[8]
-            }
-            
-        all_course_data.append(all_course_data)
-        return JsonResponse({"courses": all_course_data})
+        swimmer_id = request.GET.get('swimmer_id')  # Assuming the frontend sends the swimmer_id
+        if not swimmer_id:
+            return JsonResponse({"error": "Swimmer ID is required"}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                # Query to get courses not enrolled by the user
+                cursor.execute("""
+                    SELECT c.course_id, c.course_name, c.course_image, c.coach_id, c.course_description,
+                           c.restrictions, c.deadline, c.pool_id, c.lane_id, c.price
+                    FROM course c
+                    WHERE c.course_id NOT IN (
+                        SELECT cs.course_id
+                        FROM course_schedule cs
+                        WHERE cs.swimmer_id = %s
+                    )
+                """, [swimmer_id])
+
+                courses = cursor.fetchall()
+
+            if not courses:
+                return JsonResponse({"courses": []}, status=200)
+
+            course_data = [
+                {
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "course_image": course[2],
+                    "coach_id": course[3],
+                    "course_description": course[4],
+                    "restrictions": course[5],
+                    "deadline": course[6],
+                    "pool_id": course[7],
+                    "lane_id": course[8],
+                    "price": course[9]
+                }
+                for course in courses
+            ]
+            return JsonResponse({"courses": course_data}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while fetching courses", "details": str(e)}, status=500)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CurrentCoursesView(View):
@@ -445,55 +465,57 @@ class UpdateCourseView(View):
     
 @method_decorator(csrf_exempt, name='dispatch')
 class EnrollCourseView(View):
-    permission_classes = [AllowAny]
     def post(self, request):
-        data = json.loads(request.body)
-        swimmer_id = data.get("swimmer_id")
-        course_id = data.get("course_id")
-        
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course_schedule where course_id=%s", [course_id])
-            course = cursor.fetchone()
+        try:
+            data = json.loads(request.body)
+            swimmer_id = data.get("swimmer_id")
+            course_id = data.get("course_id")
             
-            coach_id = course[3]
-            start_day = course[4]
-            end_day = course[5]
-            start_time = course[6]
-            end_time = course[7]
-            day = course[8]
-            
-            cursor.execute("SELECT * FROM course where course_id=%s", [course_id])
-            course = cursor.fetchone()
-            
-            price = course[9]
-        
-            cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id=%s", [swimmer_id])
-            total_money = cursor.fetchone()
-            
-            if not total_money or total_money[0] < price:
-                return JsonResponse({"error": "Insufficient money"}, status=400)
+            with connection.cursor() as cursor:
+                # Fetch course schedule details
+                cursor.execute("SELECT * FROM course_schedule WHERE course_id = %s", [course_id])
+                course_schedule = cursor.fetchone()
+                if not course_schedule:
+                    return JsonResponse({"error": "Course not found in schedule."}, status=404)
 
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "DELETE FROM cart WHERE purchaser_id = %s AND course_id = %s",
-                [swimmer_id, course_id],
-            )  
-        
-            cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [price, swimmer_id])
-            
-            
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO course_schedule (course_id, swimmer_id, coach_id, start_date, end_date, start_time, end_time, day, status) VALUES (%s, %s)",
-                [course_id, swimmer_id, coach_id, start_day, end_day, start_time, end_time, day, "in-progress"]
-            )
-            
-            cursor.execute(
-                "INSERT INTO buying_history(purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at) VALUES(%s, %s, %s, %s, %s, %s, %s)",
-                [swimmer_id, course_id, 0, 0, 0, datetime.now],
-            )  
-        
-        return JsonResponse({"message": "Successfully enrolled in the course"}, status=201)
+                coach_id = course_schedule[2]
+                start_day = course_schedule[3]
+                end_day = course_schedule[4]
+                start_time = course_schedule[5]
+                end_time = course_schedule[6]
+                day = course_schedule[7]
+                
+                # Fetch course details
+                cursor.execute("SELECT * FROM course WHERE course_id = %s", [course_id])
+                course = cursor.fetchone()
+                if not course:
+                    return JsonResponse({"error": "Course not found."}, status=404)
+
+                price = course[8]
+                
+                # Check swimmer's balance
+                cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id = %s", [swimmer_id])
+                swimmer_money = cursor.fetchone()
+                if not swimmer_money or swimmer_money[0] < price:
+                    return JsonResponse({"error": "Insufficient funds."}, status=400)
+
+                # Deduct money and enroll the swimmer
+                cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [price, swimmer_id])
+                cursor.execute("""
+                    INSERT INTO course_schedule (course_id, swimmer_id, coach_id, start_date, end_date, start_time, end_time, day, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'in-progress')
+                """, [course_id, swimmer_id, coach_id, start_day, end_day, start_time, end_time, day])
+
+                # Add to buying history
+                cursor.execute("""
+                    INSERT INTO buying_history (purchaser_id, course_id, cafe_item_id, cafe_id, lane_id, purchased_at)
+                    VALUES (%s, %s, 0, 0, 0, %s)
+                """, [swimmer_id, course_id, datetime.now()])
+
+            return JsonResponse({"message": "Successfully enrolled in the course."}, status=201)
+
+        except Exception as e:
+            return JsonResponse({"error": "Enrollment failed.", "details": str(e)}, status=500)
     
 @method_decorator(csrf_exempt, name='dispatch')
 class CoachRatingView(View):

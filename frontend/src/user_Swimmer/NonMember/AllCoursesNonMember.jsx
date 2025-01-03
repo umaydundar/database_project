@@ -1,97 +1,56 @@
-// AllCoursesNonMember.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './LayoutNonMember.jsx';
 import './AllCoursesNonMember.css';
 import { FaEye } from 'react-icons/fa';
 
-// 1) Import our custom hook
-import { useCart } from './CartContextNonmember'; // <-- Adjust path as needed
+// Import the custom hook for cart functionality
+import { useCart } from './CartContextNonmember';
 
 const AllCoursesNonMember = () => {
-    const allCourses = [
-        {
-            id: 1,
-            title: 'Beginner Swimming',
-            instructor: 'John Doe',
-            capacity: 20,
-            enrolled: 20,
-            rating: 4.5,
-            enrollmentDeadline: '2024-12-21',
-            description: 'Learn the basics of swimming, including freestyle, backstroke, and water safety.',
-            duration: '8 weeks',
-            poolLocation: 'Main Pool Area',
-            schedule: 'Mondays and Wednesdays, 6:00 PM - 7:30 PM',
-            restrictions: 'Must be able to swim at least 25 meters.',
-            announcements: 'New swimming goggles available for purchase.',
-            price: 100, // Add a price field if it’s not there
-        },
-        {
-            id: 2,
-            title: 'Intermediate Swimming',
-            instructor: 'Jane Smith',
-            capacity: 15,
-            enrolled: 12,
-            rating: 4.7,
-            enrollmentDeadline: '2024-12-22',
-            description: 'Improve your swimming techniques and endurance with advanced drills and workouts.',
-            duration: '6 weeks',
-            poolLocation: 'Main Pool Area',
-            schedule: 'Tuesdays and Thursdays, 5:00 PM - 6:30 PM',
-            restrictions: 'Must complete Beginner Swimming course or equivalent.',
-            announcements: 'Coach Jane will be joining us for the first session.',
-            price: 120,
-        },
-        {
-            id: 3,
-            title: 'Advanced Swimming Techniques',
-            instructor: 'Alice Johnson',
-            capacity: 10,
-            enrolled: 8,
-            rating: 4.8,
-            enrollmentDeadline: '2024-12-23',
-            description: 'Master advanced swimming techniques and competitive strategies.',
-            duration: '10 weeks',
-            poolLocation: 'Olympic Pool',
-            schedule: 'Fridays, 4:00 PM - 6:00 PM',
-            restrictions: 'Must have completed Intermediate Swimming course.',
-            announcements: 'Final course of the season.',
-            price: 150,
-        },
-        {
-            id: 4,
-            title: 'Water Aerobics',
-            instructor: 'Bob Brown',
-            capacity: 25,
-            enrolled: 20,
-            rating: 4.3,
-            enrollmentDeadline: '2024-12-20',
-            description: 'Engage in low-impact, high-efficiency workouts in the water to improve fitness and flexibility.',
-            duration: '12 weeks',
-            poolLocation: 'Fitness Pool',
-            schedule: 'Saturdays, 9:00 AM - 10:30 AM',
-            restrictions: 'Open to all fitness levels.',
-            announcements: 'Bring your own water bottle.',
-            price: 90,
-        },
-    ];
-
+    const [allCourses, setAllCourses] = useState([]); // State to store courses fetched from the backend
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState(null);
+    const [error, setError] = useState(null);
 
-    // 2) Destructure addToCart from useCart()
+    // Fetch courses from the backend on component mount
+    useEffect(() => {
+        const fetchCourses = async () => {
+            const nonMemberId = localStorage.getItem('nonMemberId'); // Get non-member ID from local storage
+            if (!nonMemberId) {
+                setError('Nonmember ID is missing.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/api/all_courses/?swimmer_id=${nonMemberId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch courses.');
+                }
+                const data = await response.json();
+                setAllCourses(data.courses || []);
+            } catch (err) {
+                console.error('Error fetching courses:', err);
+                setError('Unable to load courses. Please try again later.');
+            }
+        };
+
+        fetchCourses();
+    }, []);
+
+    // Destructure the addToCart function from useCart
     const { addToCart } = useCart();
 
-    // Sorting courses
+    // Sorting the courses
     const sortedCourses = [...allCourses].sort((a, b) => {
-        // Sort by availability (fully enrolled courses last)
+        // Sort by availability
         if (a.enrolled === a.capacity && b.enrolled !== b.capacity) return 1;
         if (b.enrolled === b.capacity && a.enrolled !== a.capacity) return -1;
 
-        // Then by rating (higher rating first)
+        // Sort by rating
         if (b.rating !== a.rating) return b.rating - a.rating;
 
-        // Then by enrollment deadline (earlier deadline first)
-        return new Date(a.enrollmentDeadline) - new Date(b.enrollmentDeadline);
+        // Sort by enrollment deadline
+        return new Date(a.deadline) - new Date(b.deadline);
     });
 
     const handleDetailsClick = (course) => {
@@ -104,10 +63,39 @@ const AllCoursesNonMember = () => {
         setSelectedCourse(null);
     };
 
-    // 3) The function that adds the course to cart
-    const handleEnroll = (course) => {
-        addToCart(course);
-        alert(`Added "${course.title}" to cart.`);
+    // Handle enrollment by sending a POST request to the backend
+    const handleEnroll = async (course) => {
+        const nonMemberId = localStorage.getItem('nonMemberId');
+
+        if (!nonMemberId) {
+            alert('Please log in to enroll in a course.');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/enroll_course/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    swimmer_id: nonMemberId,
+                    course_id: course.course_id,
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(data.message || 'Successfully enrolled in the course.');
+                // Optionally, refresh the courses list after enrollment
+            } else {
+                const errorData = await response.json();
+                alert(errorData.error || 'Failed to enroll in the course.');
+            }
+        } catch (error) {
+            console.error('Error enrolling in the course:', error);
+            alert('An error occurred while enrolling in the course.');
+        }
     };
 
     return (
@@ -117,25 +105,30 @@ const AllCoursesNonMember = () => {
                 <div className="allcourses-content-container">
                     <h1 className="allcourses-heading">All Courses</h1>
 
+                    {error && <p className="error-message">{error}</p>}
+
                     {/* Courses List */}
                     <div className="allcourses-courses-list">
                         {sortedCourses.map((course) => (
-                            <div key={course.id} className="allcourses-course-card">
+                            <div key={course.course_id} className="allcourses-course-card">
                                 <div className="allcourses-course-header">
-                                    <h2>{course.title}</h2>
+                                    <h2>{course.course_name}</h2>
                                 </div>
                                 <div className="allcourses-course-brief">
                                     <p>
-                                        <strong>Instructor:</strong> {course.instructor} (Rating: {course.rating})
+                                        <strong>Instructor:</strong> {course.coach_id} (Rating: {course.rating || 'N/A'})
                                     </p>
                                     <p>
                                         <strong>Capacity:</strong> {course.capacity - course.enrolled}/{course.capacity}
                                     </p>
                                     <p>
-                                        <strong>Deadline:</strong> {course.enrollmentDeadline}
+                                        <strong>Deadline:</strong> {course.deadline}
                                     </p>
                                     <p>
                                         <strong>Price:</strong> ${course.price}
+                                    </p>
+                                    <p>
+                                        <strong>Restrictions:</strong> {course.restrictions || 'None'}
                                     </p>
                                 </div>
                                 <div className="allcourses-course-actions">
@@ -168,32 +161,30 @@ const AllCoursesNonMember = () => {
             {isModalOpen && selectedCourse && (
                 <div className="allcourses-modal-overlay" onClick={handleCloseModal}>
                     <div className="allcourses-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>{selectedCourse.title}</h2>
+                        <h2>{selectedCourse.course_name}</h2>
                         <p>
-                            <strong>Instructor:</strong> {selectedCourse.instructor} (Rating:{' '}
-                            {selectedCourse.rating})
+                            <strong>Instructor:</strong> {selectedCourse.coach_id} (Rating: {selectedCourse.rating || 'N/A'})
                         </p>
                         <p>
-                            <strong>Description:</strong> {selectedCourse.description}
+                            <strong>Description:</strong> {selectedCourse.course_description}
                         </p>
                         <p>
-                            <strong>Duration:</strong> {selectedCourse.duration}
+                            <strong>Duration:</strong> {selectedCourse.duration || 'N/A'}
                         </p>
                         <p>
-                            <strong>Pool Location:</strong> {selectedCourse.poolLocation}
+                            <strong>Pool Location:</strong> Pool {selectedCourse.pool_id}
                         </p>
                         <p>
-                            <strong>Schedule:</strong> {selectedCourse.schedule}
+                            <strong>Schedule:</strong> {selectedCourse.schedule || 'N/A'}
                         </p>
                         <p>
-                            <strong>Restrictions:</strong> {selectedCourse.restrictions}
+                            <strong>Restrictions:</strong> {selectedCourse.restrictions || 'None'}
                         </p>
                         <p>
-                            <strong>Capacity:</strong> {selectedCourse.capacity - selectedCourse.enrolled}/
-                            {selectedCourse.capacity}
+                            <strong>Capacity:</strong> {selectedCourse.capacity - selectedCourse.enrolled}/{selectedCourse.capacity}
                         </p>
                         <p>
-                            <strong>Announcements:</strong> {selectedCourse.announcements}
+                            <strong>Announcements:</strong> {selectedCourse.announcements || 'No announcements.'}
                         </p>
 
                         <div className="allcourses-modal-buttons">
