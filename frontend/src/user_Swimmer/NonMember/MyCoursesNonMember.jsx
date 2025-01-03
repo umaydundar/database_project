@@ -6,7 +6,7 @@ import axios from "axios";
 
 const MyCourses = () => {
     const [selectedCategory, setSelectedCategory] = useState("current"); // 'current' or 'previous'
-    const [courses, setCourses] = useState({ upcoming: [], previous: [] }); // Store fetched courses
+    const [courses, setCourses] = useState({ current: [], previous: [] }); // Store fetched courses
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [terminationReason, setTerminationReason] = useState("");
@@ -16,25 +16,30 @@ const MyCourses = () => {
     // Fetch courses on component mount
     useEffect(() => {
         const fetchCourses = async () => {
-            const nonMemberId = localStorage.getItem("nonMemberId");
-            if (!nonMemberId) {
+            const userId = localStorage.getItem("nonMemberId");
+            if (!userId) {
                 setError("User not logged in.");
                 return;
             }
 
             try {
-                const response = await axios.get(
-                    `http://127.0.0.1:8000/api/nonmember_courses/?nonmember_id=${nonMemberId}`
+                // Fetch current courses
+                const currentResponse = await axios.get(
+                    `http://127.0.0.1:8000/api/current_courses/?user_id=${userId}`
                 );
 
-                if (response.status === 200) {
-                    setCourses({
-                        upcoming: response.data.upcoming_courses,
-                        previous: response.data.previous_courses,
-                    });
-                } else {
-                    setError("Failed to fetch courses.");
-                }
+                // Fetch previous courses
+                const previousResponse = await axios.get(
+                    `http://127.0.0.1:8000/api/previous_courses/?user_id=${userId}`
+                );
+                console.log("Current Courses Response:", currentResponse.data);
+                console.log("Previous Courses Response:", previousResponse.data);
+
+                setCourses({
+                    current: currentResponse.data.current_courses || [],
+                    previous: previousResponse.data.previous_courses || [],
+                });
+                
             } catch (err) {
                 console.error("Error fetching courses:", err);
                 setError("Failed to fetch courses. Please try again later.");
@@ -45,11 +50,19 @@ const MyCourses = () => {
     }, []);
 
     const coursesToDisplay =
-        selectedCategory === "current" ? courses.upcoming : courses.previous;
+        selectedCategory === "current" ? courses.current : courses.previous;
 
-    const handleViewClick = (course) => {
-        setSelectedCourse(course);
-        setIsModalOpen(true);
+    const handleViewClick = async (courseId) => {
+        try {
+            const response = await axios.get(
+                `http://127.0.0.1:8000/api/get_course/?course_id=${courseId}`
+            );
+            setSelectedCourse(response.data.course);
+            setIsModalOpen(true);
+        } catch (err) {
+            console.error("Error fetching course details:", err);
+            alert("Failed to fetch course details.");
+        }
     };
 
     const handleCloseModal = () => {
@@ -58,14 +71,32 @@ const MyCourses = () => {
         setTerminationReason("");
     };
 
-    const handleWithdraw = () => {
+    const handleWithdraw = async () => {
         if (terminationReason.trim() === "") {
             alert("Please provide a termination reason.");
             return;
         }
-        alert(`Course "${selectedCourse.course_name}" has been withdrawn.\nReason: ${terminationReason}`);
-        handleCloseModal();
+    
+        try {
+            const userId = localStorage.getItem("nonMemberId");
+            const response = await axios.post("http://127.0.0.1:8000/api/withdraw_course/", {
+                swimmer_id: userId,
+                course_id: selectedCourse.course_id,
+                termination_reason: terminationReason,
+            });
+    
+            if (response.status === 200) {
+                alert(`Course "${selectedCourse.course_name}" has been withdrawn.\nReason: ${terminationReason}`);
+                handleCloseModal();
+            } else {
+                alert("Failed to withdraw the course. Please try again.");
+            }
+        } catch (err) {
+            console.error("Error withdrawing course:", err);
+            alert("An error occurred while withdrawing the course.");
+        }
     };
+    
 
     const handleRatingClick = (courseId, rating) => {
         setRatings((prevRatings) => ({
@@ -76,7 +107,7 @@ const MyCourses = () => {
     };
 
     const getCourseTitle = (courseId) => {
-        const allCourses = [...courses.upcoming, ...courses.previous];
+        const allCourses = [...courses.current, ...courses.previous];
         const course = allCourses.find((c) => c.course_id === courseId);
         return course ? course.course_name : "";
     };
@@ -92,7 +123,7 @@ const MyCourses = () => {
                             className={`category-btn ${selectedCategory === "current" ? "active" : ""}`}
                             onClick={() => setSelectedCategory("current")}
                         >
-                            Upcoming Courses
+                            Current Courses
                         </button>
                         <button
                             className={`category-btn ${selectedCategory === "previous" ? "active" : ""}`}
@@ -101,47 +132,54 @@ const MyCourses = () => {
                             Previous Courses
                         </button>
                     </div>
-
+    
+                    {/* Log coursesToDisplay before rendering */}
+                    {console.log("Courses to Display:", coursesToDisplay)}
+    
                     <div className="courses-list">
-                        {coursesToDisplay.map((course) => (
-                            <div key={course.course_id} className="course-card">
-                                <div className="course-header">
-                                    <h2>{course.course_name}</h2>
+                        {coursesToDisplay.length > 0 ? (
+                            coursesToDisplay.map((course) => (
+                                <div key={course.course_id} className="course-card">
+                                    <div className="course-header">
+                                        <h2>{course.course_name}</h2>
+                                    </div>
+                                    <div className="course-details">
+                                        <p><strong>Description:</strong> {course.course_description}</p>
+                                        <p><strong>Pool:</strong> {course.pool_id}</p>
+                                        <p><strong>Lane:</strong> {course.lane_id}</p>
+                                        <p><strong>Price:</strong> ${course.price}</p>
+                                    </div>
+                                    <div className="course-actions">
+                                        {selectedCategory === "current" ? (
+                                            <button
+                                                className="view-button"
+                                                onClick={() => handleViewClick(course.course_id)}
+                                            >
+                                                <FaEye /> View
+                                            </button>
+                                        ) : (
+                                            <div className="rating-container">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <FaStar
+                                                        key={star}
+                                                        className={`star ${
+                                                            ratings[course.course_id] >= star ? "filled" : "empty"
+                                                        }`}
+                                                        onClick={() => handleRatingClick(course.course_id, star)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="course-details">
-                                    <p><strong>Description:</strong> {course.course_description}</p>
-                                    <p><strong>Pool:</strong> {course.pool_id}</p>
-                                    <p><strong>Lane:</strong> {course.lane_id}</p>
-                                    <p><strong>Price:</strong> ${course.price}</p>
-                                </div>
-                                <div className="course-actions">
-                                    {selectedCategory === "current" ? (
-                                        <button
-                                            className="view-button"
-                                            onClick={() => handleViewClick(course)}
-                                        >
-                                            <FaEye /> View
-                                        </button>
-                                    ) : (
-                                        <div className="rating-container">
-                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                <FaStar
-                                                    key={star}
-                                                    className={`star ${
-                                                        ratings[course.course_id] >= star ? "filled" : "empty"
-                                                    }`}
-                                                    onClick={() => handleRatingClick(course.course_id, star)}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            <p>No courses available.</p>
+                        )}
                     </div>
                 </div>
             </div>
-
+    
             {isModalOpen && selectedCourse && (
                 <div className="modal-overlay" onClick={handleCloseModal}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -173,6 +211,7 @@ const MyCourses = () => {
             )}
         </div>
     );
+    
 };
 
 export default MyCourses;
