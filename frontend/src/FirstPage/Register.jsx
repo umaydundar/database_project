@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 const RegisterPage = () => {
     const [role, setRole] = useState("");
-    const [poolId, setPoolId] = useState()
+    const [poolId, setPoolId] = useState();
     const [sex, setSex] = useState("");
     const [swimmingProficiency, setSwimmingProficiency] = useState("");
     const [inputsVisible, setInputsVisible] = useState(false);
@@ -19,9 +19,9 @@ const RegisterPage = () => {
 
     const handleRegisterClick = async (e) => {
         e.preventDefault();
-        e.preventDefault();
         const formData = {
             "username": e.target.username.value,
+            "email": e.target.email.value, // Add email to the form data
             "name": e.target.firstName.value,
             "surname": e.target.lastName.value,
             "password": e.target.password.value,
@@ -35,18 +35,18 @@ const RegisterPage = () => {
 
         try {
             const response = await axios.post(
-                "http://127.0.0.1:8000/api/register/", 
+                "http://127.0.0.1:8000/api/register/",
                 formData,
                 {
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    withCredentials: true, 
+                    withCredentials: true,
                 }
             );
 
             if (response.status === 200) {
-                navigate("/"); 
+                navigate("/");
             } else {
                 setError("Registration failed. Please try again.");
             }
@@ -112,7 +112,7 @@ const RegisterPage = () => {
                                 </label>
                             </div>
 
-                            {/* username*/}
+                            {/* Username */}
                             <div className="input-group">
                                 <input
                                     type="text"
@@ -123,6 +123,20 @@ const RegisterPage = () => {
                                 />
                                 <label htmlFor="username" className="input-label">
                                     Username
+                                </label>
+                            </div>
+
+                            {/* Email */}
+                            <div className="input-group">
+                                <input
+                                    type="email"
+                                    id="email"
+                                    className="input-field"
+                                    placeholder="Email Address"
+                                    required
+                                />
+                                <label htmlFor="email" className="input-label">
+                                    Email
                                 </label>
                             </div>
 
@@ -161,7 +175,7 @@ const RegisterPage = () => {
                             </div>
 
                             {/* Swimming Proficiency (only for swimmers) */}
-                            {(role === "Swimmer"  || role === "1" )&& (
+                            {(role === "Swimmer" || role === "1") && (
                                 <div className="role-selection">
                                     <label htmlFor="swimmingProficiency" className="role-label">
                                         Swimming Proficiency:
@@ -179,30 +193,6 @@ const RegisterPage = () => {
                                         <option value="Beginner">Beginner</option>
                                         <option value="Intermediate">Intermediate</option>
                                         <option value="Advanced">Advanced</option>
-                                    </select>
-                                </div>
-                            )}
-
-
-                            {/* Swimming Proficiency (only for swimmers) */}
-                            {(role != "Swimmer"  || role != "1" )&& (
-                                <div className="pool-selection">
-                                    <label htmlFor="poolId" className="pool-label">
-                                        Swimming Proficiency:
-                                    </label>
-                                    <select
-                                        id="pool_id"
-                                        className="pool-dropdown"
-                                        value={poolId}
-                                        onChange={(e) => setPoolId(e.target.value)}
-                                        required
-                                    >
-                                        <option value="" disabled>
-                                            Select Pool
-                                        </option>
-                                        <option value="1">Pool 1</option>
-                                        <option value="2">Pool 2</option>
-                                        <option value="3">Pool 3</option>
                                     </select>
                                 </div>
                             )}

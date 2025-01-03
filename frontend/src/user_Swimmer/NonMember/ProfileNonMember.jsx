@@ -4,266 +4,241 @@ import Sidebar from "./LayoutNonMember.jsx";
 import "./ProfileNonMember.css";
 
 const Profile = () => {
-  const [userData, setUserData] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState(null);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+    const [userData, setUserData] = useState(null); // Store user data
+    const [isEditing, setIsEditing] = useState(false); // Edit mode toggle
+    const [editedData, setEditedData] = useState(null); // Editable user data
+    const [passwordVisible, setPasswordVisible] = useState(false); // Password visibility toggle
+    const [selectedFile, setSelectedFile] = useState(null); // Selected profile picture file
+    const [loading, setLoading] = useState(true); // Loading state
+    const [error, setError] = useState(""); // Error message
 
-  // Fetch profile data
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const nonMemberId = localStorage.getItem("nonMemberId");
-      if (!nonMemberId) {
-        setError("User not logged in.");
-        setLoading(false);
-        return;
-      }
+    // Fetch profile data
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const userId = localStorage.getItem("nonMemberId"); // Get user ID from local storage
+            if (!userId) {
+                setError("User not logged in.");
+                setLoading(false);
+                return;
+            }
 
-      try {
-        // Fetch nonmember data
-        const nonmemberResponse = await axios.get(
-          `http://127.0.0.1:8000/api/get_nonmember/?user_id=${nonMemberId}`
-        );
+            try {
+                const response = await axios.get(
+                    `http://127.0.0.1:8000/api/get_nonmember/?user_id=${userId}`
+                );
 
-        // Fetch user data
-        const userResponse = await axios.get(
-          `http://127.0.0.1:8000/api/get_user/?user_id=${nonMemberId}`
-        );
+                if (response.status === 200 && response.data.user) {
+                    setUserData(response.data.user);
+                    setEditedData(response.data.user);
+                } else {
+                    setError("Failed to fetch profile data.");
+                }
+            }
+            catch (err) {
+                console.error("Error fetching profile:", err);
+                setError("Failed to fetch profile data. Please try again later.");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        if (nonmemberResponse.data.nonmember && userResponse.data.user) {
-          const combinedData = {
-            ...nonmemberResponse.data.nonmember,
-            forename: userResponse.data.user.forename,
-            surname: userResponse.data.user.surname,
-            email: userResponse.data.user.email,
-            username: userResponse.data.user.username, // Retain the username
-            profilePicture: userResponse.data.user.user_image,
-            password: userResponse.data.user.password,
-          };
+        fetchProfile();
+    }, []);
 
-          setUserData(combinedData);
-          setEditedData(combinedData);
-          setLoading(false);
+    // Handle form input changes
+    const handleChange = (e) => {
+        const { name, value, files } = e.target;
+        if (name === "profilePicture" && files && files[0]) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setEditedData({ ...editedData, user_image: event.target.result });
+        };
+        reader.readAsDataURL(files[0]);
+        setSelectedFile(files[0]);
         } else {
-          setError("Failed to fetch profile data.");
-          setLoading(false);
+        setEditedData({ ...editedData, [name]: value });
         }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-        setError("Failed to fetch profile data.");
-        setLoading(false);
-      }
     };
 
-    fetchProfile();
-  }, []);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const userId = localStorage.getItem("nonMemberId");
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === "profilePicture" && files && files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setEditedData({ ...editedData, profilePicture: event.target.result });
-      };
-      reader.readAsDataURL(files[0]);
-      setSelectedFile(files[0]);
-    } else {
-      setEditedData({ ...editedData, [name]: value });
-    }
-  };
+        if (!userId) {
+            alert("User not logged in.");
+            return;
+        }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const userId = localStorage.getItem("nonMemberId");
-    if (!userId) {
-      alert("User not logged in.");
-      return;
-    }
+        try {
+            const updateData = {
+                ...editedData,
+                user_id: userId, // Ensure user_id is included
+            };
 
-    try {
-      // Update user and nonmember data
-      await axios.post("http://127.0.0.1:8000/api/update_nonmember_profile/", {
-        user_id: userId,
-        forename: editedData.forename,
-        surname: editedData.surname,
-        email: editedData.email,
-        password: editedData.password,
-        username: userData.username, // Pass the original username
-        registration_timestamp: editedData.registration_timestamp,
-      });
+            // If a new profile picture is selected, convert it to Base64
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    updateData.user_image = reader.result.split(",")[1]; // Base64 data
+                    await sendUpdateRequest(updateData);
+                };
+                reader.readAsDataURL(selectedFile);
+            } else {
+                await sendUpdateRequest(updateData);
+            }
+        } catch (err) {
+            console.error("Error updating profile:", err);
+            alert("Failed to update profile.");
+        }
+    };
 
-      // Upload profile picture if selected
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("user_id", userId);
-        formData.append("profilePicture", selectedFile);
-        await axios.post("/api/upload_profile_picture/", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
+    const sendUpdateRequest = async (updateData) => {
+        try {
+            await axios.post(
+                "http://127.0.0.1:8000/api/update_nonmember_profile/",
+                updateData
+            );
+            setUserData(editedData);
+            setIsEditing(false);
+            alert("Profile updated successfully!");
+        } catch (err) {
+            console.error("Error updating profile:", err);
+            alert("Failed to update profile.");
+        }
+    };
 
-      setUserData(editedData);
-      setIsEditing(false);
-      alert("Profile updated successfully!");
-    } catch (err) {
-      console.error("Error updating profile:", err);
-      alert("Failed to update profile.");
-    }
-  };
+    const handleCancel = () => {
+        setEditedData(userData);
+        setIsEditing(false);
+        setSelectedFile(null);
+    };
 
-  const handleCancel = () => {
-    setEditedData(userData);
-    setIsEditing(false);
-    setSelectedFile(null);
-  };
+    const handleLogout = () => {
+        localStorage.removeItem("nonMemberId");
+        alert("Logged out successfully!");
+    };
 
-  const handleLogout = () => {
-    localStorage.removeItem("nonMemberId");
-    alert("Logged out successfully!");
-  };
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
-
-  return (
-    <div className="profile-main-container">
-      <div className="profile-bottom-container">
-        <Sidebar />
-        <div className="profile-content-container">
-          <h1 className="profile-heading">My Profile</h1>
-
-          <div className="profile-user-info">
-            <img
-              src={userData.profilePicture || "https://via.placeholder.com/150"}
-              alt="Profile"
-              className="profile-picture"
-            />
-            {!isEditing ? (
-              <div className="profile-details">
-                <p><strong>Name:</strong> {`${userData.forename} ${userData.surname}`}</p>
-                <p><strong>Email:</strong> {userData.email}</p>
-                <p>
-                  <strong>Username:</strong> {userData.username}
-                </p>
-                <p>
-                  <strong>Password:</strong>
-                  <span
-                    className="profile-password-toggle"
-                    onClick={() => setPasswordVisible(!passwordVisible)}
-                  >
-                    {passwordVisible ? " Hide" : " Show"}
-                  </span>
-                  {passwordVisible ? ` ${userData.password}` : " ••••••••"}
-                </p>
-                <button
-                  className="profile-edit-button"
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Profile
-                </button>
-                <button
-                  className="profile-logout-button"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <form className="profile-edit-form" onSubmit={handleSubmit}>
-                <div className="profile-form-group">
-                  <label htmlFor="forename">First Name:</label>
-                  <input
-                    type="text"
-                    id="forename"
-                    name="forename"
-                    value={editedData.forename}
-                    onChange={handleChange}
-                    required
-                  />
+    return (
+        <div className="profile-main-container">
+        <div className="profile-bottom-container">
+            <Sidebar />
+            <div className="profile-content-container">
+            <h1 className="profile-heading">My Profile</h1>
+            <div className="profile-user-info">
+                <img
+                src={`data:image/png;base64,${userData.user_image}`} // Display Base64 image
+                alt="Profile"
+                className="profile-picture"
+                />
+                {!isEditing ? (
+                <div className="profile-details">
+                    <p><strong>Name:</strong> {`${userData.forename} ${userData.surname}`}</p>
+                    <p><strong>Email:</strong> {userData.email}</p>
+                    <p><strong>Username:</strong> {userData.username}</p>
+                    <p>
+                    <strong>Password:</strong>
+                    <span
+                        className="profile-password-toggle"
+                        onClick={() => setPasswordVisible(!passwordVisible)}
+                    >
+                        {passwordVisible ? "Hide" : "Show"}
+                    </span>
+                    {passwordVisible ? ` ${userData.password}` : " ••••••••"}
+                    </p>
+                    <button onClick={() => setIsEditing(true)} className="profile-edit-button">
+                    Edit Profile
+                    </button>
+                    <button onClick={handleLogout} className="profile-logout-button">
+                    Logout
+                    </button>
                 </div>
-                <div className="profile-form-group">
-                  <label htmlFor="surname">Last Name:</label>
-                  <input
-                    type="text"
-                    id="surname"
-                    name="surname"
-                    value={editedData.surname}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="profile-form-group">
-                  <label htmlFor="email">Email:</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={editedData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="profile-form-group">
-                  <label htmlFor="password">Password:</label>
-                  <input
-                    type={passwordVisible ? "text" : "password"}
-                    id="password"
-                    name="password"
-                    value={editedData.password}
-                    onChange={handleChange}
-                    required
-                  />
-                  <span
-                    className="profile-password-toggle"
-                    onClick={() => setPasswordVisible(!passwordVisible)}
-                  >
-                    {passwordVisible ? "Hide" : "Show"}
-                  </span>
-                </div>
-                <div className="profile-form-group">
-                  <label htmlFor="profilePicture">Profile Picture:</label>
-                  <input
-                    type="file"
-                    id="profilePicture"
-                    name="profilePicture"
-                    accept="image/*"
-                    onChange={handleChange}
-                  />
-                  {editedData.profilePicture && (
-                    <img
-                      src={editedData.profilePicture}
-                      alt="Preview"
-                      className="profile-picture-preview"
+                ) : (
+                <form onSubmit={handleSubmit} className="profile-edit-form">
+                    <div className="profile-form-group">
+                    <label htmlFor="forename">First Name:</label>
+                    <input
+                        type="text"
+                        id="forename"
+                        name="forename"
+                        value={editedData.forename}
+                        onChange={handleChange}
+                        required
                     />
-                  )}
-                </div>
-                <div className="profile-form-buttons">
-                  <button type="submit" className="profile-save-button">
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    className="profile-cancel-button"
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
+                    </div>
+                    <div className="profile-form-group">
+                    <label htmlFor="surname">Last Name:</label>
+                    <input
+                        type="text"
+                        id="surname"
+                        name="surname"
+                        value={editedData.surname}
+                        onChange={handleChange}
+                        required
+                    />
+                    </div>
+                    <div className="profile-form-group">
+                    <label htmlFor="email">Email:</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={editedData.email}
+                        onChange={handleChange}
+                        required
+                    />
+                    </div>
+                    <div className="profile-form-group">
+                    <label htmlFor="password">Password:</label>
+                    <input
+                        type={passwordVisible ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={editedData.password}
+                        onChange={handleChange}
+                        required
+                    />
+                    <span
+                        className="profile-password-toggle"
+                        onClick={() => setPasswordVisible(!passwordVisible)}
+                    >
+                        {passwordVisible ? "Hide" : "Show"}
+                    </span>
+                    </div>
+                    <div className="profile-form-group">
+                    <label htmlFor="profilePicture">Profile Picture:</label>
+                    <input
+                        type="file"
+                        id="profilePicture"
+                        name="profilePicture"
+                        accept="image/*"
+                        onChange={handleChange}
+                    />
+                    {editedData.user_image && (
+                        <img
+                        src={editedData.user_image}
+                        alt="Preview"
+                        className="profile-picture-preview"
+                        />
+                    )}
+                    </div>
+                    <div className="profile-form-buttons">
+                    <button type="submit" className="profile-save-button">
+                        Save
+                    </button>
+                    <button type="button" onClick={handleCancel} className="profile-cancel-button">
+                        Cancel
+                    </button>
+                    </div>
+                </form>
+                )}
+            </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
-};
+        </div>
+    );
+    };
 
-export default Profile;
+    export default Profile;

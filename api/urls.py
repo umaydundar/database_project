@@ -76,4 +76,6 @@ urlpatterns = [
     path('get_csrf_token/', GetCSRFTokenView.as_view(), name='csrf_token'),
     path('withdraw_money_worker/', WithdrawMoneyWorkerView.as_view(), name='withdraw_money_worker'),
     path('deposit_money_worker/', DepositMoneyWorkerView.as_view(), name='deposit_money_worker'),
+    path('nonmember_courses/', CoursesNonmemberView.as_view(), name='nonmember_courses'),
+    path('upload_profile_picture/', upload_profile_picture, name='upload_profile_picture')
 ]
