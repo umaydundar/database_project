@@ -48,7 +48,7 @@ const Main = () => {
                     navigate("/member/my-courses");
                 } else if (user_role === "coach") {
                     localStorage.setItem("coachId", user_id);
-                    navigate("/coach/schedule");
+                    navigate("/coach/view-courses");
                 } else if (user_role === "admin") {
                     localStorage.setItem("adminId", user_id);
                     navigate("/admin/report");

@@ -53,7 +53,6 @@ const LayoutCoach = ({ children }) => {
 
     const navigationItems = [
         { path: "/coach/create-course", label: "Create Course", icon: "bx-plus-circle" },
-        { path: "/coach/schedule", label: "Schedule", icon: "bx-calendar" },
         { path: "/coach/view-courses", label: "View Courses", icon: "bx-book" },
         { path: "/coach/withdraw-money", label: "Withdraw Money", icon: "bx-wallet" },
         { path: "/coach/profile", label: "Profile", icon: "bx-user" },
