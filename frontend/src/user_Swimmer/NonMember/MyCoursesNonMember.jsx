@@ -98,12 +98,33 @@ const MyCourses = () => {
     };
     
 
-    const handleRatingClick = (courseId, rating) => {
+    const handleRatingClick = async (courseId, rating) => {
         setRatings((prevRatings) => ({
             ...prevRatings,
             [courseId]: rating,
         }));
-        alert(`You rated "${getCourseTitle(courseId)}" with ${rating} star(s).`);
+        try{
+            const swimmerId = localStorage.getItem("nonMemberId");
+            const response = await axios.post(
+                "http://127.0.0.1:8000/api/add_rating/",
+                { "swimmer_id": swimmerId, "course_id": courseId, "rating": rating },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    withCredentials: true,
+                }
+            );
+
+            if (response.status === 200) {
+                alert(`You rated "${getCourseTitle(courseId)}" with ${rating} star(s).`);
+            } else {
+                setError("Rating sending failed");
+            }
+        } catch (err) {
+            console.error("Rating error:", err);
+            setError("An unexpected error occurred.");
+        }
     };
 
     const getCourseTitle = (courseId) => {
