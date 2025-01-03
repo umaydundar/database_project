@@ -6,52 +6,56 @@ import axios from "axios";
 const ViewCourses = () => {
   const [currentCourses, setCurrentCourses] = useState([]);
   const [previousCourses, setPreviousCourses] = useState([]);
-  const [view, setView] = useState("upcoming");
+  const [view, setView] = useState("upcoming"); 
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseStudents, setCourseStudents] = useState([]);
   const [error, setError] = useState("");
+  const coachId = localStorage.getItem("userId");
 
   const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     const fetchCurrentCourses = async () => {
       try {
-        const coachId = localStorage.getItem("coachId");
-        if (!coachId) {
-          setError("Coach ID not found. Please log in again.");
-          return;
-        }
-
         const response = await axios.get(
-          `http://127.0.0.1:8000/api/coach_courses_current/?coach_id=${coachId}`
+          "http://127.0.0.1:8000/api/coach_courses_current/",
+          {
+              params: {coachId},
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              withCredentials: true,
+          }
         );
+
         console.log(response);
-        console.log(response.data.coach_courses);
         setCurrentCourses(response.data.coach_courses);
       } catch (err) {
         setError("Failed to fetch current courses.");
         console.error(err);
-      }
+      } 
     };
 
     const fetchPreviousCourses = async () => {
       try {
-        const coachId = localStorage.getItem("coachId");
-        if (!coachId) {
-          setError("Coach ID not found. Please log in again.");
-          return;
-        }
-
         const response = await axios.get(
-          `http://127.0.0.1:8000/api/coach_courses_previous/?coach_id=${coachId}`
+          "http://127.0.0.1:8000/api/coach_courses_previous/",
+          {
+              params: {coachId},
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              withCredentials: true,
+          }
         );
+
         console.log(response);
         console.log(response.data.coach_courses);
         setPreviousCourses(response.data.coach_courses);
       } catch (err) {
         setError("Failed to fetch previous courses.");
         console.error(err);
-      }
+      } 
     };
 
     fetchCurrentCourses();
@@ -85,7 +89,7 @@ const ViewCourses = () => {
 
   const handleFinish = async (courseId) => {
     try {
-      const coachId = localStorage.getItem("coachId");
+
       const response = await axios.post(
         `http://127.0.0.1:8000/api/finish_course/`,
         { "course_id": courseId, "coach_id": coachId },
@@ -137,7 +141,9 @@ const ViewCourses = () => {
   };
 
   const filteredCourses =
-    view === "upcoming" ? currentCourses : previousCourses || [];
+    view === "upcoming"
+      ? currentCourses 
+      : previousCourses || [];
 
   const handleClosePopup = () => {
     setSelectedCourse(null);
@@ -145,74 +151,74 @@ const ViewCourses = () => {
 
   return (
     <LayoutCoach>
-      <div className="view-courses-container">
+      <div className="view-courses-container ">
         <h1 className="view-courses-heading">View Courses</h1>
 
         {/* Error Handling */}
         {error && <p className="error-message">{error}</p>}
+        <>
+          {/* View Selector */}
+          <div className="view-selector">
+            <button
+              className={`view-btn ${view === "upcoming" ? "active" : ""}`}
+              onClick={() => setView("upcoming")}
+            >
+              Upcoming Courses
+            </button>
+            <button
+              className={`view-btn ${view === "past" ? "active" : ""}`}
+              onClick={() => setView("past")}
+            >
+              Past Courses
+            </button>
+          </div>
 
-        {/* View Selector */}
-        <div className="view-selector">
-          <button
-            className={`view-btn ${view === "upcoming" ? "active" : ""}`}
-            onClick={() => setView("upcoming")}
-          >
-            Upcoming Courses
-          </button>
-          <button
-            className={`view-btn ${view === "past" ? "active" : ""}`}
-            onClick={() => setView("past")}
-          >
-            Past Courses
-          </button>
-        </div>
-
-        {/* Course List */}
-        <div className="course-list">
-          {filteredCourses.length > 0 ? (
-            filteredCourses.map((course) => (
-              <div key={course.course_id} className="course-item">
-                <div className="course-info">
-                  <h3>{course.course_name}</h3>
-                  <p>
-                    {course.course_description} | {course.deadline}
-                  </p>
-                  <p>{"Course Location: Pool" + course.pool_id}</p>
-                  <p>{"Lane" + course.lane_id}</p>
-                </div>
-                <div className="course-actions">
-                  {view === "upcoming" && (
+          {/* Course List */}
+          <div className="course-list">
+            {filteredCourses.length > 0 ? (
+              filteredCourses.map((course) => (
+                <div key={course.course_id} className="course-item">
+                  <div className="course-info">
+                    <h3>{course.course_name}</h3>
+                    <p>
+                       {course.date} | {course.start_time} - {course.end_time} | {course.course_description}
+                    </p>
+                    <p>{"Course Location: Pool " + course.pool_id}</p>
+                    <p>{"Lane " + course.lane_id}</p>
+                  </div>
+                  <div className="course-actions">
+                    {view === "upcoming" && (
+                      <button
+                        className="cancel-btn"
+                        onClick={() => handleCancel(course.course_id)}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {view === "upcoming" && (
+                      <button
+                        className="finish-btn"
+                        onClick={() => handleFinish(course.course_id)}
+                      >
+                        Finish
+                      </button>
+                    )}
                     <button
-                      className="cancel-btn"
-                      onClick={() => handleCancel(course.course_id)}
+                      className="details-btn"
+                      onClick={() => {setSelectedCourse(course)
+                        handleSelectedStudents(course)
+                      }}
                     >
-                      Cancel
+                      See Details
                     </button>
-                  )}
-                  {view === "upcoming" && (
-                    <button
-                      className="finish-btn"
-                      onClick={() => handleFinish(course.course_id)}
-                    >
-                      Finish
-                    </button>
-                  )}
-                  <button
-                    className="details-btn"
-                    onClick={() => {
-                      setSelectedCourse(course);
-                      handleSelectedStudents(course);
-                    }}
-                  >
-                    See Details
-                  </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            <p className="no-courses-message">No courses available.</p>
-          )}
-        </div>
+              ))
+            ) : (
+              <p className="no-courses-message">No courses available.</p>
+            )}
+          </div>
+        </>
 
         {/* Course Details Popup */}
         {selectedCourse && (
@@ -223,36 +229,33 @@ const ViewCourses = () => {
                 <strong>Title:</strong> {selectedCourse.course_name}
               </p>
               <p>
-                <strong>Date:</strong> {selectedCourse.course_description}
+                <strong>Date:</strong> {selectedCourse.date}
               </p>
               <p>
-                <strong>Time:</strong> {selectedCourse.deadline}
+                <strong>Time:</strong> {selectedCourse.start_time} - {selectedCourse.end_time}
               </p>
               <p>
-                <strong>Location:</strong> {"Pool" + selectedCourse.pool_id}
+                <strong>Location:</strong> {"Pool " + selectedCourse.pool_id}
               </p>
               <p>
                 <strong>Capacity:</strong> {selectedCourse.capacity}
               </p>
               <h3>Students</h3>
               <ul className="students-list">
-                {courseStudents.length > 0 ? (
-                  courseStudents.map((student) => (
-                    <li key={student.id} className="student-item">
-                      <img
-                        src={
-                          student.profilePhoto ||
-                          "https://upload.wikimedia.org/wikipedia/commons/2/2c/Default_pfp.svg"
-                        }
-                        alt={student.name}
-                      />
-                      <span>{student.name}</span>
-                      <span>{student.surname}</span>
-                    </li>
-                  ))
-                ) : (
-                  <p>No students registered for this course.</p>
-                )}
+              {courseStudents.length > 0 ? (
+                courseStudents.map((student) => (
+                  <li key={student.id} className="student-item">
+                    <img 
+                      src={student.profilePhoto || "https://upload.wikimedia.org/wikipedia/commons/2/2c/Default_pfp.svg"} 
+                      alt={student.name} 
+                    />
+                    <span>{student.name}</span>
+                    <span>{student.surname}</span>
+                  </li>
+                ))
+              ) : (
+                <p>No students registered for this course.</p>
+              )}
               </ul>
               <button className="close-popup-btn" onClick={handleClosePopup}>
                 Close

@@ -369,32 +369,25 @@ class CreateCourseView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        name = data.get("course_name")
-        coach_id = data.get("coach_id")
-        description = data.get("course_description")
+        name = data.get("courseName")
+        coach_id = data.get("userId")
+        description = data.get("explanation")
         restrictions = data.get("restrictions")
-        deadline = data.get("deadline")
-        pool_id = data.get("pool_id")
-        lane_id = data.get("lane_id")
+        date = data.get("date")
+        startTime = data.get("startTime")
+        endTime = data.get("endTime")
+        pool_id = data.get("facility")
+        lane_id = data.get("lanes")
         price = data.get("price")
-        course_type = data.get("type")
         capacity = data.get("capacity")
-        skill_level = data.get("skill_level")
+
         
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO course (course_name, coach_id, course_description, restrictions, deadline, pool_id, lane_id, price)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, [name, coach_id, description, restrictions, deadline, pool_id, lane_id, price])
-            
-            new_course_id = cursor.fetchone()[0]
-            
-            if(course_type == "swimming_lesson"):
-                cursor.execute("INSERT INTO swimming_lesson (lesson_id, capacity, is_full, skill_level)VALUES (%s, %s, %s, %s)", 
-                               [new_course_id, capacity, False, skill_level])
-            else:
-                cursor.execute("INSERT INTO personal_training (training_id) VALUES (%s)",[new_course_id])
-        
+                INSERT INTO course (course_name, coach_id, course_description, date, start_time, end_time, restrictions, pool_id, lane_id, price, capacity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, [name, coach_id, description, date, startTime, endTime, restrictions, pool_id, lane_id[0], price, capacity])
+    
         return JsonResponse({"message": "Course created successfully"}, status=201)
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1807,56 +1800,57 @@ class CoachCoursesView(View):
 class CoachCoursesUpcomingView(View):
     permission_classes = [AllowAny]
     def get(self, request):
-        coach_id = request.GET.get('coach_id')
+        coach_id = request.GET.get('coachId')
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE coach_id=%s AND status='in-progress')", [coach_id])
+            cursor.execute("SELECT * FROM course WHERE coach_id=%s AND date >= CURRENT_DATE", [coach_id])
             courses = cursor.fetchall()
-        
+
         course_data = []
         for course in courses:
             course= {
                 "course_id": course[0],
                 "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[6],
-                "pool_id": course[7],
-                "lane_id": course[8],
-                "price": course[9],
-                "capacity": course[10]
+                "coach_id": course[2],
+                "course_description": course[3],
+                "date": course[4],
+                "start_time": course[5],
+                "end_time": course[6],
+                "restrictions": course[7],
+                "pool_id": course[8],
+                "lane_id": course[9],
+                "price": course[10],
+                "capacity": course[11]
                 } 
             course_data.append(course)
-        
+
         return JsonResponse({"coach_courses": course_data})
     
 @method_decorator(csrf_exempt, name='dispatch')
 class CoachCoursesPreviousView(View):
     permission_classes = [AllowAny]
     def get(self, request):
-        coach_id = request.GET.get('coach_id')
+        coach_id = request.GET.get('coachId')
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course WHERE course_id IN (SELECT course_id FROM course_schedule WHERE coach_id=%s AND (status='cancelled' OR status='finished'))", [coach_id])
+            cursor.execute("SELECT * FROM course WHERE coach_id=%s AND date < CURRENT_DATE", [coach_id])
             courses = cursor.fetchall()
-        
+
         course_data = []
         for course in courses:
             course= {
                 "course_id": course[0],
                 "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[6],
-                "pool_id": course[7],
-                "lane_id": course[8],
-                "price": course[9],
-                "capacity": course[10]
+                "coach_id": course[2],
+                "course_description": course[3],
+                "date": course[4],
+                "start_time": course[5],
+                "end_time": course[6],
+                "restrictions": course[7],
+                "pool_id": course[8],
+                "lane_id": course[9],
+                "price": course[10],
+                "capacity": course[11]
                 } 
             course_data.append(course)
-        
         return JsonResponse({"coach_courses": course_data})
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -2276,14 +2270,11 @@ class FinishCourseView(View):
         coach_id  = data.get("coach_id")
         
         with connection.cursor() as cursor:
-            cursor.execute(
-                "UPDATE course_schedule SET status = 'finished' WHERE course_id = %s AND coach_id=%s",
-                [course_id, coach_id],
-            )
+            cursor.execute("UPDATE course SET date = %s WHERE course_id = %s ",['2000-01-01', course_id, ])
             
             cursor.execute("SELECT * FROM course WHERE course_id =%s", [course_id])
             course = cursor.fetchone()
-            course_price = course[9]
+            course_price = course[10]
             
             cursor.execute("SELECT COUNT(*) FROM buying_history WHERE course_id=%s", [course_id])
             participant_count = cursor.fetchone()[0]
@@ -2296,18 +2287,19 @@ class FinishCourseView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class CancelCourseView(View):
     permission_classes = [AllowAny]
+    
     def post(self, request):
         data = json.loads(request.body)
         course_id = data.get("course_id")
-        coach_id  = data.get("coach_id")
+        coach_id = data.get("coach_id")
+        
+        if not course_id or not coach_id:
+            return JsonResponse({"error": "Both course_id and coach_id are required"}, status=400)
         
         with connection.cursor() as cursor:
-            cursor.execute(
-                "UPDATE course_schedule SET status = 'cancelled' WHERE course_id = %s AND coach_id=%s",
-                [course_id, coach_id],
-            )
+            cursor.execute("DELETE FROM course WHERE course_id = %s",[course_id])
             
-        return JsonResponse({"message": "Course marked as cancelled successfully"})
+        return JsonResponse({"message": "Course deleted successfully"})
     
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -2408,7 +2400,6 @@ class GetCourseStudentsView(View):
     permission_classes = [AllowAny]
     def get(self, request):
         course_id = request.GET.get('course_id')
-        print(course_id)
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM all_users WHERE user_id IN (SELECT swimmer_id FROM course_schedule WHERE course_id=%s)", [course_id])
             students = cursor.fetchall()

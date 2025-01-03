@@ -95,43 +95,9 @@ const CreateCourse = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-    
+
         const { date, startTime, endTime, ageRange, weightRange, sex, price, capacity, explanation, courseName } = formData;
     
-        if (!isTimeValid(startTime) || !isTimeValid(endTime)) {
-            setError("Pool is open only from 8:00 AM to 10:00 PM.");
-            return;
-        }
-    
-        if (startTime >= endTime) {
-            setError("Start time must be before end time.");
-            return;
-        }
-    
-        if (!validateRanges(ageRange, 3, 70)) {
-            setError("Age range must be valid and between 3-70.");
-            return;
-        }
-    
-        if (!validateRanges(weightRange, 30, 140)) {
-            setError("Weight range must be valid and between 30-140.");
-            return;
-        }
-    
-        if (capacity < 1 || capacity > 10) {
-            setError("Capacity must be between 1 and 10.");
-            return;
-        }
-    
-        if (!isCoachAvailable(date, startTime, endTime)) {
-            setError("You have a conflicting appointment on your calendar.");
-            return;
-        }
-    
-        if (!selectedLanes.length) {
-            setError("You must select at least one available lane.");
-            return;
-        }
         const restrictions = `${sex},${ageRange},${weightRange}`;
 
         try {
@@ -158,7 +124,7 @@ const CreateCourse = () => {
             if (response.ok) {
                 const data = await response.json();
                 alert("Course created successfully!");
-                console.log(data);
+
     
                 setFormData({
                     date: "",
@@ -225,7 +191,6 @@ const CreateCourse = () => {
     const availableLanes = selectedFacility
         ? Object.keys(poolFacilities[selectedFacility].lanes).map((lane) => lane)
         : [];
-    console.log("Available lanes:", availableLanes);
 
     return (
         <LayoutCoach>
@@ -411,6 +376,7 @@ const CreateCourse = () => {
 
                     <button type="submit" className="create-course-submit-button">
                         Create Course
+                        
                     </button>
                 </form>
             </div>
