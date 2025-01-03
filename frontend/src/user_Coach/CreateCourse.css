@@ -8,6 +8,7 @@
     padding: 0;
     box-sizing: border-box;
     font-family: "Poppins", sans-serif;
+
 }
 
 .create-course-main-container {
@@ -111,7 +112,9 @@
     font-weight: 500;
     transition: background-color 0.3s ease, transform 0.2s;
 }
-
+.create-course-lane-selection {
+    color: black; 
+}
 .create-course-submit-button:hover {
     background-color: #218838;
     transform: translateY(-2px);
@@ -187,6 +190,7 @@
     border-radius: 5px;
     cursor: pointer;
     font-size: 16px;
+
 }
 
 .check-availability-button:hover {
@@ -207,6 +211,7 @@
     border-radius: 4px;
     font-size: 16px;
     transition: all 0.2s ease-in-out;
+
 }
 
 .lane-button:hover {

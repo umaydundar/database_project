@@ -1,28 +1,28 @@
 import React, { useState } from "react";
-import LayoutCoach from "./LayoutCoach"; // Import the Sidebar layout
+import LayoutCoach from "./LayoutCoach"; 
 import "./CreateCourse.css";
 
 const CreateCourse = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    const userId = localStorage.getItem("userId");
     const poolFacilities = {
-        "Pool Facility 1": {
+        "1": {
             lanes: {
-                1: [{ start: "08:00", end: "10:00" }],
-                2: [],
-                3: [{ start: "13:00", end: "15:00" }],
-                4: [],
-                5: [],
+                1: [{ start: "08:00", end: "20:00" }],
+                2: [{ start: "08:00", end: "20:00" }],
+                3: [{ start: "08:00", end: "20:00" }],
+                4: [{ start: "08:00", end: "20:00" }],
+                5: [{ start: "08:00", end: "20:00" }],
             },
         },
-        "Pool Facility 2": {
+        "2": {
             lanes: {
-                1: [{ start: "09:00", end: "11:00" }],
-                2: [{ start: "14:00", end: "16:00" }],
-                3: [],
-                4: [],
-                5: [],
+                1: [{ start: "08:00", end: "20:00" }],
+                2: [{ start: "08:00", end: "20:00" }],
+                3: [{ start: "08:00", end: "20:00" }],
+                4: [{ start: "08:00", end: "20:00" }],
+                5: [{ start: "08:00", end: "20:00" }],
             },
         },
     };
@@ -44,18 +44,13 @@ const CreateCourse = () => {
         price: "",
         capacity: "",
         explanation: "",
+        courseName: "",
     });
     const [error, setError] = useState("");
 
     const isTimeValid = (time) => {
         const [hours, minutes] = time.split(":").map(Number);
         return hours >= 8 && hours <= 22;
-    };
-
-    const isLaneAvailable = (lane, start, end) => {
-        return poolFacilities[selectedFacility].lanes[lane].every(
-            (slot) => end <= slot.start || start >= slot.end
-        );
     };
 
     const isCoachAvailable = (date, start, end) => {
@@ -76,11 +71,6 @@ const CreateCourse = () => {
     };
 
     const handleLaneSelection = (lane) => {
-        if (!isLaneAvailable(lane, formData.startTime, formData.endTime)) {
-            setError("Lane is not available for the selected time interval.");
-            return;
-        }
-
         if (selectedLanes.includes(lane)) {
             setSelectedLanes(selectedLanes.filter((l) => l !== lane));
             setError("");
@@ -103,68 +93,99 @@ const CreateCourse = () => {
         );
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
-        const { date, startTime, endTime, ageRange, weightRange, capacity } = formData;
-
+    
+        const { date, startTime, endTime, ageRange, weightRange, sex, price, capacity, explanation, courseName } = formData;
+    
         if (!isTimeValid(startTime) || !isTimeValid(endTime)) {
             setError("Pool is open only from 8:00 AM to 10:00 PM.");
             return;
         }
-
+    
         if (startTime >= endTime) {
             setError("Start time must be before end time.");
             return;
         }
-
+    
         if (!validateRanges(ageRange, 3, 70)) {
             setError("Age range must be valid and between 3-70.");
             return;
         }
-
+    
         if (!validateRanges(weightRange, 30, 140)) {
             setError("Weight range must be valid and between 30-140.");
             return;
         }
-
+    
         if (capacity < 1 || capacity > 10) {
             setError("Capacity must be between 1 and 10.");
             return;
         }
-
+    
         if (!isCoachAvailable(date, startTime, endTime)) {
             setError("You have a conflicting appointment on your calendar.");
             return;
         }
-
+    
         if (!selectedLanes.length) {
             setError("You must select at least one available lane.");
             return;
         }
+        const restrictions = `${sex},${ageRange},${weightRange}`;
 
-        alert("Course created successfully!");
-        console.log({
-            ...formData,
-            selectedFacility,
-            selectedLanes,
-        });
-
-        setFormData({
-            date: "",
-            startTime: "",
-            endTime: "",
-            ageRange: "",
-            weightRange: "",
-            sex: "",
-            price: "",
-            capacity: "",
-            explanation: "",
-        });
-        setSelectedFacility("");
-        setSelectedLanes([]);
-        setError("");
+        try {
+            const response = await fetch("http://127.0.0.1:8000/api/create_course/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    userId,
+                    date,
+                    startTime,
+                    endTime,
+                    restrictions,
+                    price,
+                    capacity,
+                    explanation,
+                    facility: selectedFacility,
+                    lanes: selectedLanes,
+                    courseName: formData.courseName,
+                }),
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                alert("Course created successfully!");
+                console.log(data);
+    
+                setFormData({
+                    date: "",
+                    startTime: "",
+                    endTime: "",
+                    ageRange: "",
+                    weightRange: "",
+                    sex: "",
+                    price: "",
+                    capacity: "",
+                    explanation: "",
+                    courseName: "",
+                });
+                setSelectedFacility("");
+                setSelectedLanes([]);
+                setError("");
+            } else {
+                const errorData = await response.json();
+                setError(errorData.error || "An error occurred while creating the course.");
+            }
+        } catch (error) {
+            setError("An error occurred while connecting to the server. Please try again.");
+            console.error(error);
+        }
     };
+    
+    
 
     const handleCheckAvailability = () => {
         const { date, startTime, endTime } = formData;
@@ -202,10 +223,9 @@ const CreateCourse = () => {
     };
 
     const availableLanes = selectedFacility
-        ? Object.keys(poolFacilities[selectedFacility].lanes).filter((lane) =>
-            isLaneAvailable(Number(lane), formData.startTime, formData.endTime)
-        )
+        ? Object.keys(poolFacilities[selectedFacility].lanes).map((lane) => lane)
         : [];
+    console.log("Available lanes:", availableLanes);
 
     return (
         <LayoutCoach>
@@ -302,6 +322,18 @@ const CreateCourse = () => {
                     )}
 
                     {/* Other Inputs */}
+                    <div className="form-group">
+                        <label htmlFor="courseName">Course Name:</label>
+                        <input
+                            type="text"
+                            id="courseName"
+                            name="courseName"
+                            value={formData.courseName}
+                            onChange={handleInputChange}
+                            placeholder="Enter course name"
+                            required
+                        />
+                    </div>
                     <div className="form-group">
                         <label htmlFor="ageRange">Age Range:</label>
                         <input

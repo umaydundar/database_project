@@ -348,24 +348,24 @@ class CreateCourseView(View):
     permission_classes = [AllowAny]
     def post(self, request):
         data = json.loads(request.body)
-        name = data.get("course_name")
-        coach_id = data.get("coach_id")
-        description = data.get("course_description")
+        name = data.get("courseName")
+        coach_id = data.get("userId")
+        description = data.get("explanation")
         restrictions = data.get("restrictions")
-        deadline = data.get("deadline")
-        pool_id = data.get("pool_id")
-        lane_id = data.get("lane_id")
+        pool_id = data.get("facility")
+        lane_id = data.get("lanes")
         price = data.get("price")
-        course_type = data.get("type")
         capacity = data.get("capacity")
-        skill_level = data.get("skill_level")
-        
+        date = data.get("date")
+        start_time = data.get("startTime")
+        end_time = data.get("endTime")
+
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO course (course_name, coach_id, course_description, restrictions, deadline, pool_id, lane_id, price)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, [name, coach_id, description, restrictions, deadline, pool_id, lane_id, price])
-            
+                INSERT INTO course (course_name, coach_id, course_description, date, start_time, end_time, restrictions, pool_id, lane_id, price, capacity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, [name, coach_id, description, date, start_time, end_time, restrictions, pool_id, lane_id[0], price, capacity])
+            """
             new_course_id = cursor.fetchone()[0]
             
             if(course_type == "swimming_lesson"):
@@ -373,7 +373,7 @@ class CreateCourseView(View):
                                [new_course_id, capacity, False, skill_level])
             else:
                 cursor.execute("INSERT INTO personal_training (training_id) VALUES (%s)",[new_course_id])
-        
+            """
         return JsonResponse({"message": "Course created successfully"}, status=201)
 
 @method_decorator(csrf_exempt, name='dispatch')

@@ -115,14 +115,14 @@ CREATE TABLE course (
     coach_id INT NOT NULL,
     course_description TEXT,
     date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
     restrictions VARCHAR(255),
-    deadline DATE,
     pool_id INT NOT NULL,
     lane_id INT NOT NULL,
     price INT NOT NULL,
-    FOREIGN KEY (coach_id) REFERENCES coach(coach_id),
-    FOREIGN KEY (pool_id) REFERENCES swimming_pool(pool_id),
-    FOREIGN KEY (lane_id) REFERENCES lane(lane_id)
+    capacity INT NOT NULL,
+    FOREIGN KEY (coach_id) REFERENCES coach(coach_id)
 );
 
 CREATE TABLE course_schedule(
