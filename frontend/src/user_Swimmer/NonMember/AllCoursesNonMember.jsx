@@ -40,19 +40,6 @@ const AllCoursesNonMember = () => {
     // Destructure the addToCart function from useCart
     const { addToCart } = useCart();
 
-    // Sorting the courses
-    const sortedCourses = [...allCourses].sort((a, b) => {
-        // Sort by availability
-        if (a.enrolled === a.capacity && b.enrolled !== b.capacity) return 1;
-        if (b.enrolled === b.capacity && a.enrolled !== a.capacity) return -1;
-
-        // Sort by rating
-        if (b.rating !== a.rating) return b.rating - a.rating;
-
-        // Sort by enrollment deadline
-        return new Date(a.deadline) - new Date(b.deadline);
-    });
-
     const handleDetailsClick = (course) => {
         setSelectedCourse(course);
         setIsModalOpen(true);
@@ -109,17 +96,17 @@ const AllCoursesNonMember = () => {
 
                     {/* Courses List */}
                     <div className="allcourses-courses-list">
-                        {sortedCourses.map((course) => (
+                        {allCourses.map((course) => (
                             <div key={course.course_id} className="allcourses-course-card">
                                 <div className="allcourses-course-header">
                                     <h2>{course.course_name}</h2>
                                 </div>
                                 <div className="allcourses-course-brief">
                                     <p>
-                                        <strong>Instructor:</strong> {course.coach_id} (Rating: {course.rating || 'N/A'})
+                                        <strong>Instructor:</strong> {course.coach_id}
                                     </p>
                                     <p>
-                                        <strong>Capacity:</strong> {course.capacity - course.enrolled}/{course.capacity}
+                                        <strong>Registered:</strong> {course.registered}
                                     </p>
                                     <p>
                                         <strong>Deadline:</strong> {course.deadline}
@@ -138,7 +125,7 @@ const AllCoursesNonMember = () => {
                                     >
                                         <FaEye /> Details
                                     </button>
-                                    {course.enrolled === course.capacity ? (
+                                    {course.is_full ? (
                                         <button className="allcourses-enroll-button full" disabled>
                                             Full
                                         </button>
@@ -163,30 +150,20 @@ const AllCoursesNonMember = () => {
                     <div className="allcourses-modal-content" onClick={(e) => e.stopPropagation()}>
                         <h2>{selectedCourse.course_name}</h2>
                         <p>
-                            <strong>Instructor:</strong> {selectedCourse.coach_id} (Rating: {selectedCourse.rating || 'N/A'})
+                            <strong>Instructor:</strong> {selectedCourse.coach_id}
                         </p>
                         <p>
                             <strong>Description:</strong> {selectedCourse.course_description}
                         </p>
                         <p>
-                            <strong>Duration:</strong> {selectedCourse.duration || 'N/A'}
+                            <strong>Registered:</strong> {selectedCourse.registered}
                         </p>
                         <p>
-                            <strong>Pool Location:</strong> Pool {selectedCourse.pool_id}
-                        </p>
-                        <p>
-                            <strong>Schedule:</strong> {selectedCourse.schedule || 'N/A'}
+                            <strong>Price:</strong> ${selectedCourse.price}
                         </p>
                         <p>
                             <strong>Restrictions:</strong> {selectedCourse.restrictions || 'None'}
                         </p>
-                        <p>
-                            <strong>Capacity:</strong> {selectedCourse.capacity - selectedCourse.enrolled}/{selectedCourse.capacity}
-                        </p>
-                        <p>
-                            <strong>Announcements:</strong> {selectedCourse.announcements || 'No announcements.'}
-                        </p>
-
                         <div className="allcourses-modal-buttons">
                             <button className="allcourses-close-button" onClick={handleCloseModal}>
                                 Close
