@@ -1,188 +1,269 @@
-import React, { useState } from 'react';
-import Sidebar from './LayoutNonMember.jsx';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import './ProfileNonMember.css';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import Sidebar from "./LayoutNonMember.jsx";
+import "./ProfileNonMember.css";
 
 const Profile = () => {
-    const initialUserData = {
-        name: 'John Doe',
-        email: 'johndoe@example.com',
-        profilePicture: 'https://via.placeholder.com/150',
-        password: 'password123',
-    };
+  const [userData, setUserData] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedData, setEditedData] = useState(null);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    const [userData, setUserData] = useState(initialUserData);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedData, setEditedData] = useState(initialUserData);
-    const [passwordVisible, setPasswordVisible] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const navigate = useNavigate();
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const nonMemberId = localStorage.getItem("nonMemberId");
+      if (!nonMemberId) {
+        setError("User not logged in.");
+        setLoading(false);
+        return;
+      }
 
-    const handleChange = (e) => {
-        const { name, value, files } = e.target;
-        if (name === 'profilePicture' && files && files[0]) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setEditedData({ ...editedData, profilePicture: event.target.result });
-            };
-            reader.readAsDataURL(files[0]);
-            setSelectedFile(files[0]);
+      try {
+        // Fetch nonmember data
+        const nonmemberResponse = await axios.get(
+          `http://127.0.0.1:8000/api/get_nonmember/?user_id=${nonMemberId}`
+        );
+
+        // Fetch user data
+        const userResponse = await axios.get(
+          `http://127.0.0.1:8000/api/get_user/?user_id=${nonMemberId}`
+        );
+
+        if (nonmemberResponse.data.nonmember && userResponse.data.user) {
+          const combinedData = {
+            ...nonmemberResponse.data.nonmember,
+            forename: userResponse.data.user.forename,
+            surname: userResponse.data.user.surname,
+            email: userResponse.data.user.email,
+            username: userResponse.data.user.username, // Retain the username
+            profilePicture: userResponse.data.user.user_image,
+            password: userResponse.data.user.password,
+          };
+
+          setUserData(combinedData);
+          setEditedData(combinedData);
+          setLoading(false);
         } else {
-            setEditedData({ ...editedData, [name]: value });
+          setError("Failed to fetch profile data.");
+          setLoading(false);
         }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        setError("Failed to fetch profile data.");
+        setLoading(false);
+      }
     };
 
-    // Handle form submission
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setUserData(editedData);
-        setIsEditing(false);
+    fetchProfile();
+  }, []);
 
-        // Optional: Save the uploaded file to the server
-        if (selectedFile) {
-            const formData = new FormData();
-            formData.append('profilePicture', selectedFile);
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "profilePicture" && files && files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setEditedData({ ...editedData, profilePicture: event.target.result });
+      };
+      reader.readAsDataURL(files[0]);
+      setSelectedFile(files[0]);
+    } else {
+      setEditedData({ ...editedData, [name]: value });
+    }
+  };
 
-            // Example API call to upload the image
-            // fetch('/api/upload', {
-            //     method: 'POST',
-            //     body: formData,
-            // }).then(() => alert('Profile updated successfully!'));
-        } else {
-            alert('Profile updated successfully!');
-        }
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const userId = localStorage.getItem("nonMemberId");
+    if (!userId) {
+      alert("User not logged in.");
+      return;
+    }
 
-    // Handle cancel editing
-    const handleCancel = () => {
-        setEditedData(userData);
-        setIsEditing(false);
-        setSelectedFile(null);
-    };
+    try {
+      // Update user and nonmember data
+      await axios.post("http://127.0.0.1:8000/api/update_nonmember_profile/", {
+        user_id: userId,
+        forename: editedData.forename,
+        surname: editedData.surname,
+        email: editedData.email,
+        password: editedData.password,
+        username: userData.username, // Pass the original username
+        registration_timestamp: editedData.registration_timestamp,
+      });
 
-    const handleLogout = () => {
-        alert('Logged out successfully!');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userPoints'); // Clear user points on logout
-        localStorage.removeItem('balance'); // Clear balance on logout
-        navigate('/'); // Redirect to Home or Login page
-    };
+      // Upload profile picture if selected
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("user_id", userId);
+        formData.append("profilePicture", selectedFile);
+        await axios.post("/api/upload_profile_picture/", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
-    return (
-        <div className="profile-main-container">
-            <div className="profile-bottom-container">
-                <Sidebar />
-                <div className="profile-content-container">
-                    <h1 className="profile-heading">My Profile</h1>
+      setUserData(editedData);
+      setIsEditing(false);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      alert("Failed to update profile.");
+    }
+  };
 
-                    <div className="profile-user-info">
-                        <img
-                            src={userData.profilePicture}
-                            alt="Profile"
-                            className="profile-picture"
-                        />
-                        {!isEditing ? (
-                            <div className="profile-details">
-                                <p><strong>Name:</strong> {userData.name}</p>
-                                <p><strong>Email:</strong> {userData.email}</p>
-                                <p>
-                                    <strong>Password:</strong>
-                                    <span
-                                        className="profile-password-toggle"
-                                        onClick={() => setPasswordVisible(!passwordVisible)}
-                                    >
-                                        {passwordVisible ? ' Hide' : ' Show'}
-                                    </span>
-                                    {passwordVisible ? ` ${userData.password}` : ' ••••••••'}
-                                </p>
-                                <button
-                                    className="profile-edit-button"
-                                    onClick={() => setIsEditing(true)}
-                                >
-                                    Edit Profile
-                                </button>
-                                <button
-                                    className="profile-logout-button"
-                                    onClick={handleLogout}
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        ) : (
-                            <form className="profile-edit-form" onSubmit={handleSubmit}>
-                                <div className="profile-form-group">
-                                    <label htmlFor="name">Name:</label>
-                                    <input
-                                        type="text"
-                                        id="name"
-                                        name="name"
-                                        value={editedData.name}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="profile-form-group">
-                                    <label htmlFor="email">Email:</label>
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        name="email"
-                                        value={editedData.email}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="profile-form-group">
-                                    <label htmlFor="password">Password:</label>
-                                    <input
-                                        type={passwordVisible ? "text" : "password"}
-                                        id="password"
-                                        name="password"
-                                        value={editedData.password}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                    <span
-                                        className="profile-password-toggle"
-                                        onClick={() => setPasswordVisible(!passwordVisible)}
-                                    >
-                                        {passwordVisible ? 'Hide' : 'Show'}
-                                    </span>
-                                </div>
-                                <div className="profile-form-group">
-                                    <label htmlFor="profilePicture">Profile Picture:</label>
-                                    <input
-                                        type="file"
-                                        id="profilePicture"
-                                        name="profilePicture"
-                                        accept="image/*"
-                                        onChange={handleChange}
-                                    />
-                                    {editedData.profilePicture && (
-                                        <img
-                                            src={editedData.profilePicture}
-                                            alt="Preview"
-                                            className="profile-picture-preview"
-                                        />
-                                    )}
-                                </div>
-                                <div className="profile-form-buttons">
-                                    <button type="submit" className="profile-save-button">Save</button>
-                                    <button
-                                        type="button"
-                                        className="profile-cancel-button"
-                                        onClick={handleCancel}
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
+  const handleCancel = () => {
+    setEditedData(userData);
+    setIsEditing(false);
+    setSelectedFile(null);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("nonMemberId");
+    alert("Logged out successfully!");
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  return (
+    <div className="profile-main-container">
+      <div className="profile-bottom-container">
+        <Sidebar />
+        <div className="profile-content-container">
+          <h1 className="profile-heading">My Profile</h1>
+
+          <div className="profile-user-info">
+            <img
+              src={userData.profilePicture || "https://via.placeholder.com/150"}
+              alt="Profile"
+              className="profile-picture"
+            />
+            {!isEditing ? (
+              <div className="profile-details">
+                <p><strong>Name:</strong> {`${userData.forename} ${userData.surname}`}</p>
+                <p><strong>Email:</strong> {userData.email}</p>
+                <p>
+                  <strong>Username:</strong> {userData.username}
+                </p>
+                <p>
+                  <strong>Password:</strong>
+                  <span
+                    className="profile-password-toggle"
+                    onClick={() => setPasswordVisible(!passwordVisible)}
+                  >
+                    {passwordVisible ? " Hide" : " Show"}
+                  </span>
+                  {passwordVisible ? ` ${userData.password}` : " ••••••••"}
+                </p>
+                <button
+                  className="profile-edit-button"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Edit Profile
+                </button>
+                <button
+                  className="profile-logout-button"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <form className="profile-edit-form" onSubmit={handleSubmit}>
+                <div className="profile-form-group">
+                  <label htmlFor="forename">First Name:</label>
+                  <input
+                    type="text"
+                    id="forename"
+                    name="forename"
+                    value={editedData.forename}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
-            </div>
+                <div className="profile-form-group">
+                  <label htmlFor="surname">Last Name:</label>
+                  <input
+                    type="text"
+                    id="surname"
+                    name="surname"
+                    value={editedData.surname}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="profile-form-group">
+                  <label htmlFor="email">Email:</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={editedData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="profile-form-group">
+                  <label htmlFor="password">Password:</label>
+                  <input
+                    type={passwordVisible ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={editedData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                  <span
+                    className="profile-password-toggle"
+                    onClick={() => setPasswordVisible(!passwordVisible)}
+                  >
+                    {passwordVisible ? "Hide" : "Show"}
+                  </span>
+                </div>
+                <div className="profile-form-group">
+                  <label htmlFor="profilePicture">Profile Picture:</label>
+                  <input
+                    type="file"
+                    id="profilePicture"
+                    name="profilePicture"
+                    accept="image/*"
+                    onChange={handleChange}
+                  />
+                  {editedData.profilePicture && (
+                    <img
+                      src={editedData.profilePicture}
+                      alt="Preview"
+                      className="profile-picture-preview"
+                    />
+                  )}
+                </div>
+                <div className="profile-form-buttons">
+                  <button type="submit" className="profile-save-button">
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="profile-cancel-button"
+                    onClick={handleCancel}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default Profile;

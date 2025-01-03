@@ -5,7 +5,8 @@ CREATE TABLE all_users (
     surname VARCHAR(255),
     username VARCHAR(255),
     password VARCHAR(255),
-    user_type VARCHAR(255)
+    user_type VARCHAR(255),
+    email VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE swimming_pool (

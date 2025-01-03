@@ -41,6 +41,7 @@ const Main = () => {
 
                 // Navigate based on user role
                 if (user_role === "non-member") {
+                    localStorage.setItem("nonMemberId", user_id);
                     navigate("/non-member/schedule");
                 } else if (user_role === "member") {
                     localStorage.setItem("swimmerId", user_id);

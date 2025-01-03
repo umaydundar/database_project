@@ -677,7 +677,8 @@ class GetUserView(View):
                         surname, 
                         username, 
                         password, 
-                        user_type 
+                        user_type,
+                        email 
                     FROM all_users 
                     WHERE user_id = %s
                 """, [user_id])  # Query the correct table and column
@@ -698,6 +699,7 @@ class GetUserView(View):
                     "username": user[4],
                     "password": user[5],
                     "user_type": user[6],
+                    "email": user[7],
                 }
                 return JsonResponse({"user": user_data}, status=200)
             else:
@@ -846,6 +848,7 @@ class UpdateMemberProfileView(View):
             surname = data.get("surname")
             username = data.get("username")
             password = data.get("password")
+            email = data.get("email")
 
             # Data for `swimmer` table
             total_money = data.get("total_money")
@@ -878,10 +881,10 @@ class UpdateMemberProfileView(View):
                 cursor.execute(
                     """
                     UPDATE all_users 
-                    SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s
+                    SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, email=%s
                     WHERE user_id=%s
                     """,
-                    [user_image, forename, surname, username, password, user_id]
+                    [user_image, forename, surname, username, password, email, user_id]
                 )
 
             # Update `swimmer` table
@@ -928,33 +931,71 @@ class UpdateMemberProfileView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateNonmemberProfileView(View):
     permission_classes = [AllowAny]
+
     def post(self, request):
-        data = json.loads(request.body)
-        user_id = data.get("user_id")
-        user_image = data.get("user_image")
-        forename = data.get('forename')
-        surname = data.get('surname')
-        username = data.get('username')
-        password = data.get('password')
-        total_money = data.get("total_money")
-        swim_proficiency = data.get("swim_proficiency")
-        number_of_booked_slots = data.get("number_of_booked_slots")
-        total_courses_enrolled = data.get("total_courses_enrolled")
-        total_courses_terminated = data.get("total_courses_terminated")
-        membership_status = data.get("membership_status")
-        age = data.get("age")
-        gender = data.get("gender")
-        phone_number = data.get("phone_number")
-        
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s WHERE user_id=%s",
-                            [user_image, forename, surname, username, password, user_id])
-                
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE swimmer SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, number_of_booked_slots=%s, total_courses_enrolled=%s, total_courses_terminated=%s, membership_status=%s,total_money WHERE swimmer_id=%s",
-                            [phone_number, age, gender, swim_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status, total_money, user_id])
-        
-        return JsonResponse({"message": "Nonmember updated successfully"})
+        try:
+            data = json.loads(request.body)
+
+            # Extract required fields
+            user_id = data.get("user_id")
+            if not user_id:
+                return JsonResponse({"error": "User ID is required."}, status=400)
+
+            # Data for `all_users` table
+            user_image = data.get("user_image")
+            forename = data.get("forename")
+            surname = data.get("surname")
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email")
+
+            # Data for `nonmember_swimmer` table
+            registration_timestamp = data.get("registration_timestamp")
+
+            # Check if nonmember exists in `nonmember_swimmer` table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT swimmer_id FROM nonmember_swimmer WHERE swimmer_id=%s", [user_id]
+                )
+                nonmember_exists = cursor.fetchone()
+
+            if not nonmember_exists:
+                return JsonResponse(
+                    {"error": "Nonmember does not exist in nonmember_swimmer table."},
+                    status=404,
+                )
+
+            # Update `all_users` table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE all_users 
+                    SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s, email=%s
+                    WHERE user_id=%s
+                    """,
+                    [user_image, forename, surname, username, password, email, user_id],
+                )
+
+            # Update `nonmember_swimmer` table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE nonmember_swimmer 
+                    SET registration_timestamp=%s
+                    WHERE swimmer_id=%s
+                    """,
+                    [registration_timestamp, user_id],
+                )
+
+            return JsonResponse({"message": "Nonmember profile updated successfully."}, status=200)
+
+        except Exception as e:
+            return JsonResponse(
+                {"error": "An error occurred while updating the profile.", "details": str(e)},
+                status=500,
+            )
+
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateCoachProfileView(View):
@@ -1103,20 +1144,44 @@ class GetMemberSwimmerView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class GetNonmemberSwimmerView(View):
     permission_classes = [AllowAny]
-    def get(self, request):
-        non_member_id = request.GET.get('non_member_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM nonmember_swimmer WHERE swimmer_id = %s", [non_member_id])
-            user = cursor.fetchone()
 
-        if user:
-            user_data = {
-                "swimmer_id": user[0],
-                "registration_timestamp": user[1],
-            }
-            return JsonResponse({"nonmember": user_data})
-        else:
-            return JsonResponse({"error": "Nonmember not found"}, status=404)
+    def get(self, request):
+        # Extract user_id (swimmerId in frontend) from the request
+        user_id = request.GET.get('user_id')
+
+        if not user_id:
+            return JsonResponse({"error": "User ID is required."}, status=400)
+
+        try:
+            # Fetch nonmember details from the database
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT swimmer_id, registration_timestamp
+                    FROM nonmember_swimmer 
+                    WHERE swimmer_id = %s
+                    """,
+                    [user_id]
+                )
+                nonmember = cursor.fetchone()
+
+            # If nonmember is found, return their details
+            if nonmember:
+                nonmember_data = {
+                    "swimmer_id": nonmember[0],
+                    "registration_timestamp": nonmember[1],
+                }
+                return JsonResponse({"nonmember": nonmember_data}, status=200)
+            else:
+                return JsonResponse({"error": "Nonmember not found."}, status=404)
+
+        except Exception as e:
+            return JsonResponse(
+                {"error": "An error occurred while fetching nonmember details.", "details": str(e)},
+                status=500
+            )
+
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class GetCoachView(View):

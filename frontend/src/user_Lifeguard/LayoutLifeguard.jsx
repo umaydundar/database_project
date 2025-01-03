@@ -35,15 +35,22 @@ const LayoutLifeguard = ({ children }) => {
     // Handle logout
     const handleLogout = () => {
         localStorage.clear(); // Clear all localStorage items
+        localStorage.clear(); // Clear all localStorage items
         navigate("/"); // Redirect to Home or Login page
     };
 
+    // Navigation items for the sidebar
     // Navigation items for the sidebar
     const navigationItems = [
         { path: "/lifeguard/select-working-hours", label: "Select Working Hours", icon: "bx-time" },
         { path: "/lifeguard/upcoming-hours", label: "Upcoming Hours", icon: "bx-calendar" },
         { path: "/lifeguard/withdraw-money", label: "Withdraw Money", icon: "bx-wallet" },
     ];
+
+    // Fetch balance when the component mounts
+    useEffect(() => {
+        fetchBalance();
+    }, []);
 
     // Fetch balance when the component mounts
     useEffect(() => {
@@ -62,6 +69,16 @@ const LayoutLifeguard = ({ children }) => {
 
                     {/* Balance View */}
                     <div className="balance-container">
+                        {loading ? (
+                            <span>Loading balance...</span>
+                        ) : error ? (
+                            <span className="error">{error}</span>
+                        ) : (
+                            <div className="balance-view">
+                                <span className="balance-label">Balance:</span>
+                                <span className="balance-amount">{totalMoney} TL</span>
+                            </div>
+                        )}
                         {loading ? (
                             <span>Loading balance...</span>
                         ) : error ? (

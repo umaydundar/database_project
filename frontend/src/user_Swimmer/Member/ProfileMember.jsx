@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import Sidebar from './LayoutMember.jsx';
-import './ProfileMember.css';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import Sidebar from "./LayoutMember.jsx";
+import "./ProfileMember.css";
 
 const Profile = () => {
     const [userData, setUserData] = useState(null);
@@ -34,7 +34,9 @@ const Profile = () => {
                         ...memberResponse.data.member,
                         forename: userResponse.data.user.forename,
                         surname: userResponse.data.user.surname,
-                        email: userResponse.data.user.username,
+                        email: userResponse.data.user.email,
+                        username: userResponse.data.user.username, // Retain username
+                        userType: userResponse.data.user.user_type, // Retain user type
                         profilePicture: userResponse.data.user.user_image,
                         password: userResponse.data.user.password,
                     };
@@ -84,8 +86,11 @@ const Profile = () => {
                 user_id: userId,
                 forename: editedData.forename,
                 surname: editedData.surname,
-                username: editedData.email,
+                email: editedData.email,
                 password: editedData.password,
+                // Explicitly pass unchanged fields
+                username: userData.username,
+                user_type: userData.userType,
             });
 
             // Upload profile picture if selected
