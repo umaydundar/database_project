@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import base64
+import logging
+logger = logging.getLogger(__name__)
 
 
 class GetCSRFTokenView(View):
@@ -190,83 +192,156 @@ class AllCoursesView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class CurrentCoursesView(View):
     permission_classes = [AllowAny]
+
     def get(self, request):
         swimmer_id = request.GET.get('user_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course where course_id IN (SELECT course_id FROM course_schedule WHERE swimmer_id=%s AND status=%s)", [swimmer_id, "in-progress"])
-            courses = cursor.fetchall()
-        
-        current_course_data = []
-        for course in courses:
-            current_course_data = {
-                "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[5],
-                "pool_id": course[6],
-                "lane_id": course[7],
-                "price": course[8]
-            }
-            
-        current_course_data.append(current_course_data)
-        return JsonResponse({"current-courses": current_course_data})
-    
+
+        if not swimmer_id:
+            return JsonResponse({"error": "User ID is required."}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * 
+                    FROM course 
+                    WHERE course_id IN (
+                        SELECT course_id 
+                        FROM course_schedule 
+                        WHERE swimmer_id=%s AND status=%s
+                    )
+                """, [swimmer_id, "in-progress"])
+                courses = cursor.fetchall()
+
+            current_course_data = []
+            for course in courses:
+                current_course_data.append({
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "course_image": course[2],
+                    "coach_id": course[3],
+                    "course_description": course[4],
+                    "restrictions": course[5],
+                    "deadline": course[6],
+                    "pool_id": course[7],
+                    "lane_id": course[8],
+                    "price": course[9],
+                })
+
+            return JsonResponse({"current_courses": current_course_data}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while fetching current courses.", "details": str(e)}, status=500)
+
 @method_decorator(csrf_exempt, name='dispatch')  
 class PreviousCoursesView(View):
     permission_classes = [AllowAny]
+
     def get(self, request):
         swimmer_id = request.GET.get('user_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course where course_id IN (SELECT course_id FROM course_schedule WHERE swimmer_id=%s AND (status=%s OR status=%s ) )", [swimmer_id, "withdrawn", "finished"])
-            courses = cursor.fetchall()
-        
-        current_course_data = []
-        for course in courses:
-            current_course_data = {
-                "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[5],
-                "pool_id": course[6],
-                "lane_id": course[7],
-                "price": course[8]
-            }
-            
-        current_course_data.append(current_course_data)
-        return JsonResponse({"previous-courses": current_course_data})
+
+        if not swimmer_id:
+            return JsonResponse({"error": "User ID is required."}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * 
+                    FROM course 
+                    WHERE course_id IN (
+                        SELECT course_id 
+                        FROM course_schedule 
+                        WHERE swimmer_id=%s AND (status=%s OR status=%s)
+                    )
+                """, [swimmer_id, "withdrawn", "finished"])
+                courses = cursor.fetchall()
+
+            previous_course_data = []
+            for course in courses:
+                previous_course_data.append({
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "course_image": course[2],
+                    "coach_id": course[3],
+                    "course_description": course[4],
+                    "restrictions": course[5],
+                    "deadline": course[6],  # Ensure this is the correct index
+                    "pool_id": course[7],
+                    "lane_id": course[8],
+                    "price": course[9],
+                })
+
+            return JsonResponse({"previous_courses": previous_course_data}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while fetching previous courses.", "details": str(e)}, status=500)
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class GetCourseView(View):
     permission_classes = [AllowAny]
+
     def get(self, request):
         course_id = request.GET.get('course_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course where course_id=%s", [course_id])
-            course = cursor.fetchone()
-        
-        current_course_data = []
-        if course:
-            current_course_data = {
-               "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[5],
-                "pool_id": course[6],
-                "lane_id": course[7],
-                "price": course[8]
-            }
-            
-        current_course_data.append(current_course_data)
-        return JsonResponse({"course": current_course_data})
+        if not course_id:
+            return JsonResponse({"error": "Course ID is required."}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT * FROM course WHERE course_id=%s", [course_id])
+                course = cursor.fetchone()
+
+            if course:
+                current_course_data = {
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "course_image": course[2],
+                    "coach_id": course[3],
+                    "course_description": course[4],
+                    "restrictions": course[5],
+                    "deadline": course[6],
+                    "pool_id": course[7],
+                    "lane_id": course[8],
+                    "price": course[9],
+                }
+                return JsonResponse({"course": current_course_data}, status=200)
+            else:
+                return JsonResponse({"error": "Course not found."}, status=404)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred.", "details": str(e)}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WithdrawCourseView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            swimmer_id = data.get("swimmer_id")
+            course_id = data.get("course_id")
+            termination_reason = data.get("termination_reason")
+
+            # Validate input
+            if not swimmer_id or not course_id or not termination_reason:
+                return JsonResponse({"error": "Missing required fields."}, status=400)
+
+            with connection.cursor() as cursor:
+                # Delete the existing course_schedule entry
+                cursor.execute("""
+                    DELETE FROM course_schedule
+                    WHERE swimmer_id = %s AND course_id = %s AND status = 'in-progress'
+                """, [swimmer_id, course_id])
+
+                # Recreate the course_schedule entry with status 'withdrawn'
+                cursor.execute("""
+                    INSERT INTO course_schedule (course_id, swimmer_id, status, start_date, end_date, start_time, end_time, day, lifeguard_id)
+                    VALUES (%s, %s, %s, CURRENT_DATE, CURRENT_DATE, '00:00:00', '00:00:00', 'N/A', NULL)
+                """, [course_id, swimmer_id, 'withdrawn'])
+
+            return JsonResponse({"message": "Course withdrawn successfully."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred.", "details": str(e)}, status=500)
+
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class CreateCourseView(View):
@@ -1508,6 +1583,7 @@ class CoursesNonmemberView(View):
                     WHERE cs.swimmer_id = %s AND c.deadline > %s AND cs.status = 'in-progress'
                 """, [nonmember_id, today])
                 upcoming_courses = cursor.fetchall()
+                logger.info(f"Upcoming courses: {upcoming_courses}")
 
             upcoming_data = []
             for course in upcoming_courses:
@@ -2055,23 +2131,6 @@ class RemoveCourseFromCartView(View):
             )
 
         return JsonResponse({"message": "Course removed from cart successfully"})
-        
-
-@method_decorator(csrf_exempt, name='dispatch')
-class WithdrawCourseView(View):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        data = json.loads(request.body)
-        swimmer_id = data.get("swimmer_id")
-        course_id = data.get("course_id")
-
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "UPDATE FROM course_schedule SET status WHERE swimmer_id = %s AND course_id = %s",
-                [swimmer_id, course_id],
-            )
-
-        return JsonResponse({"message": "Successfully withdrawn from the course"})
     
 @method_decorator(csrf_exempt, name='dispatch')
 class FinishCourseView(View):
@@ -2131,36 +2190,6 @@ class FinishPersonalTrainingView(View):
             )
 
         return JsonResponse({"message": "Personal training session marked as finished successfully"})
-    
-@method_decorator(csrf_exempt, name='dispatch')
-class PreviousCoursesView(View):
-    permission_classes = [AllowAny]
-    def get(self, request):
-        swimmer_id = request.GET.get("swimmer_id")
-        
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM course_schedule WHERE course_schedule.swimmer_id= %s AND course_schedule.status=%s",
-                    [swimmer_id, "finished"])
-            courses = cursor.fetchall()
-
-        previous_courses = []
-        
-        for course in courses:
-            course = {
-                "course_id": course[0],
-                "course_name": course[1],
-                "course_image": course[2],
-                "coach_id": course[3],
-                "course_description": course[4],
-                "restrictions": course[5],
-                "deadline": course[6],
-                "pool_id": course[7],
-                "lane_id": course[8],
-                "price": course[9],
-            }
-            previous_courses.append(course)
-            
-        return JsonResponse({"previous_courses": previous_courses})
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PasswordChangeEmailView(View):
