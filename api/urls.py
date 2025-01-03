@@ -81,5 +81,6 @@ urlpatterns = [
     path('deposit_money_worker/', DepositMoneyWorkerView.as_view(), name='deposit_money_worker'),
     path('nonmember_courses/', CoursesNonmemberView.as_view(), name='nonmember_courses'),
     path('upload_profile_picture/', upload_profile_picture, name='upload_profile_picture'),
-    path('course_students/', GetCourseStudentsView.as_view(), name='get_course_students')
+    path('course_students/', GetCourseStudentsView.as_view(), name='get_course_students'),
+     path('get_all_courses/', GetAllCoursesView.as_view(), name='get_all_courses')
 ]

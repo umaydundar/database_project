@@ -523,8 +523,8 @@ class EnrollCourseView(View):
                 # Enroll swimmer and deduct balance
                 cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [price, swimmer_id])
                 cursor.execute("""
-                    INSERT INTO course_schedule (course_id, swimmer_id, coach_id, start_time, end_time, day, status)
-                    SELECT course_id, %s, coach_id, start_time, end_time, 'Monday', 'in-progress'
+                    INSERT INTO course_schedule (course_id, swimmer_id, coach_id, start_time, end_time, status, day)
+                    SELECT course_id, %s, coach_id, start_time, end_time, 'in-progress', 'Monday'
                     FROM course
                     WHERE course_id = %s
                 """, [swimmer_id, course_id])
@@ -1232,7 +1232,7 @@ class GetMemberSwimmerView(View):
 class GetNonmemberSwimmerView(View):
     def get(self, request):
         # Get the `user_id` from the request's query parameters
-        user_id = request.GET.get('user_id')
+        user_id = request.GET.get('swimmer_id')
 
         # If `user_id` is not provided, return an error response
         if not user_id:
@@ -1243,8 +1243,8 @@ class GetNonmemberSwimmerView(View):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, user_image, forename, surname, username, password, email
-                    FROM all_users
+                    SELECT user_id, user_image, forename, surname, username, password, email, total_money
+                    FROM all_users, swimmer
                     WHERE user_id = %s
                     """,
                     [user_id]
@@ -1267,6 +1267,7 @@ class GetNonmemberSwimmerView(View):
                     "username": user_data[4],
                     "password": user_data[5],
                     "email": user_data[6],
+                    "total_money": user_data[7]
                 }
 
                 # Return user details as JSON
@@ -2448,3 +2449,38 @@ class GetCourseStudentsView(View):
             
         return JsonResponse({"students": course_students})
 
+@method_decorator(csrf_exempt, name='dispatch')
+class GetAllCoursesView(View):
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT * FROM course GROUP BY course_id")
+
+                courses = cursor.fetchall()
+
+            if not courses:
+                return JsonResponse({"courses": []}, status=200)
+
+            course_data = [
+                {
+                    "course_id": course[0],
+                    "course_name": course[1],
+                    "coach_id": course[2],
+                    "course_description": course[3],
+                    "date": course[4],
+                    "start_time": course[5],
+                    "end_time": course[6],
+                    "restrictions": course[7],
+                    "pool_id": course[8],
+                    "lane_id": course[9],
+                    "price": course[10],
+                    "capacity": course[11],
+                    }
+                for course in courses
+            ]
+
+            return JsonResponse({"courses": course_data}, status=200)
+
+        except Exception as e:
+            print(f"Error in AllCoursesView: {e}")
+            return JsonResponse({"error": "An error occurred while fetching courses.", "details": str(e)}, status=500)

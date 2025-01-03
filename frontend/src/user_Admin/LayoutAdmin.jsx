@@ -17,7 +17,6 @@ const LayoutAdmin = ({ children }) => {
     const navigationItems = [
         { path: "/admin/manage-users", label: "Manage Users", icon: "bx-user" },
         { path: "/admin/manage-courses", label: "Manage Courses", icon: "bx-book" },
-        { path: "/admin/manage-bookings", label: "Manage Pool Bookings", icon: "bx-calendar" },
         { path: "/admin/report", label: "Reports", icon: "bx-bar-chart" },
     ];
 

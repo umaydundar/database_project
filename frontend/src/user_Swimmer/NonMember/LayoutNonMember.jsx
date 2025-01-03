@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './LayoutNonMember.css';
 import 'boxicons/css/boxicons.min.css';
+import axios from 'axios';
 
 const LayoutNonMember = () => {
   const location = useLocation();
@@ -22,6 +23,8 @@ const LayoutNonMember = () => {
   const [cvv, setCvv] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [venmoUsername, setVenmoUsername] = useState('');
+  const [error, setError] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // States for feedback messages
   const [formError, setFormError] = useState('');
@@ -30,11 +33,28 @@ const LayoutNonMember = () => {
   // Determine user role
   const userRole = localStorage.getItem('userRole') || 'member'; // Default to 'member'
 
-  // Fetch balance from localStorage on component mount
   useEffect(() => {
-    const storedBalance = parseFloat(localStorage.getItem('balance')) || 0;
-    setBalance(storedBalance);
-  }, []);
+      const fetchBalance = async () => {
+        try {
+          const swimmerId = localStorage.getItem("nonMemberId");
+          if (!swimmerId) throw new Error("Swimmer ID not found");
+  
+          const response = await axios.get(`http://127.0.0.1:8000/api/get_nonmember/${swimmerId}/`, {
+            withCredentials: true,
+          });
+  
+          if (response.status === 200 && response.data.balance) {
+            setBalance(response.data.balance);
+          } else {
+            console.error("Failed to fetch balance:", response);
+          }
+        } catch (err) {
+          console.error("Error fetching balance:", err);
+        }
+      };
+  
+      fetchBalance();
+    }, []);
 
   // Function to open the modal
   const openModal = () => {
@@ -105,13 +125,12 @@ const LayoutNonMember = () => {
       }
     }
 
-    // **Important:** In production, handle payment processing securely using a payment gateway.
-
-    // Simulate adding money (for demonstration purposes)
+   
     const newBalance = balance + parseFloat(amount);
     setBalance(newBalance);
     localStorage.setItem('balance', newBalance.toString());
 
+    handleBalance();
     // Provide success feedback
     setFormSuccess(`Successfully added ${parseFloat(amount)} TL to your balance.`);
     setFormError('');
@@ -121,6 +140,42 @@ const LayoutNonMember = () => {
       closeModal();
     }, 2000);
   };
+
+
+  const handleBalance =async () =>{
+    console.log("handle balance called");
+    try {
+      var swimmerId = localStorage.getItem("swimmerId");
+      if(!swimmerId)
+      {
+        swimmerId = localStorage.getItem("nonMemberId");
+      }
+      console.log(swimmerId);
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/deposit_money/",
+        { "swimmer_id": swimmerId, "amount": amount }, // Request body
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true, 
+        }
+      );
+
+      if (response.status === 200) {
+        alert("Deposit successful!");
+        setBalance((prevBalance) => prevBalance + amount); 
+      } else {
+        setError(response.data.error || "Failed to deposit money.");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred.");
+      console.error(err);
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
 
   const handleLogout = () => {
     // Perform logout operations here (e.g., remove tokens)

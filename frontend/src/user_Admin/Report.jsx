@@ -54,7 +54,7 @@ const ReportPage = () => {
             if (courses) {
                 fetchPromises.push(
                     axios
-                        .get("http://127.0.0.1:8000/api/all_courses/")
+                        .get("http://127.0.0.1:8000/api/get_all_courses/")
                         .then((response) => ({
                             key: "courses",
                             data: response.data.courses || [],
