@@ -1276,12 +1276,12 @@ class GetCoachView(View):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        username = request.GET.get('userId')
-        if not username:
-            return JsonResponse({"error": "Username is required"}, status=400)
+        user_id= request.GET.get('userId')
+        if not user_id:
+            return JsonResponse({"error": "User id is required"}, status=400)
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT user_id FROM all_users WHERE user_id= %s", [username])
+            cursor.execute("SELECT user_id FROM all_users WHERE user_id= %s", [user_id])
             user = cursor.fetchone()
 
         with connection.cursor() as cursor:
@@ -2349,4 +2349,3 @@ class GetCourseStudentsView(View):
             course_students.append(student)
             
         return JsonResponse({"students": course_students})
-

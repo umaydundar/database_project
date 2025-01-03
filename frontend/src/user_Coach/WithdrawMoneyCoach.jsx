@@ -4,7 +4,7 @@ import "./WithdrawMoneyCoach.css";
 import axios from "axios";
 
 const WithdrawMoney = () => {
-  const [balance, setBalance] = useState(1500); 
+  const [balance, setBalance] = useState(0); // Initialize balance
   const [amount, setAmount] = useState("");
   const [iban, setIban] = useState("");
   const [error, setError] = useState("");
@@ -60,11 +60,11 @@ const WithdrawMoney = () => {
     setIsProcessing(true);
 
     try {
-      
-      console.log({ userId, amount });
+      const workerId = localStorage.getItem("coachId"); // Retrieve worker ID
+      console.log(workerId);
       const response = await axios.post(
         "http://127.0.0.1:8000/api/withdraw_money_worker/",
-        { userId, amount }, 
+        { "worker_id": workerId, "amount": amount }, // Request body
         {
           headers: {
             "Content-Type": "application/json",

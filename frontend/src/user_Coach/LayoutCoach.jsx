@@ -7,7 +7,8 @@ import axios from "axios";
 const LayoutCoach = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const [totalMoney, setTotalMoney] = useState(0);
+    const workerId = localStorage.getItem("coachId");
+    const [totalMoney, setTotalMoney] = useState(1500);
     const [generalRating, setGeneralRating] = useState(0); 
     const userId = localStorage.getItem("userId");
 
@@ -55,6 +56,7 @@ const LayoutCoach = ({ children }) => {
         { path: "/coach/schedule", label: "Schedule", icon: "bx-calendar" },
         { path: "/coach/view-courses", label: "View Courses", icon: "bx-book" },
         { path: "/coach/withdraw-money", label: "Withdraw Money", icon: "bx-wallet" },
+        { path: "/coach/profile", label: "Profile", icon: "bx-user" },
     ];
 
     return (

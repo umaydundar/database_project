@@ -27,6 +27,7 @@ import WithdrawMoneyCoach from "./user_Coach/WithdrawMoneyCoach";
 import CreateCourse from "./user_Coach/CreateCourse";
 import ScheduleCoach from "./user_Coach/ScheduleCoach";
 import ViewCoursesCoach from "./user_Coach/ViewCoursesCoach";
+import ProfileCoach from "./user_Coach/ProfileCoach";
 
 import Report from "./user_Admin/Report";
 import ManageUsers from "./user_Admin/ManageUsers";
@@ -82,6 +83,7 @@ function App() {
                 <Route path="/coach/schedule" element={<ScheduleCoach />} />
                 <Route path="/coach/view-courses" element={<ViewCoursesCoach />} />
                 <Route path="/coach/withdraw-money" element={<WithdrawMoneyCoach />} />
+                <Route path="/coach/profile" element={<ProfileCoach />} />
             </Routes>
         </Router>
     );
