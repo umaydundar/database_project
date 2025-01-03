@@ -2,14 +2,12 @@ import axios from "axios";
 import "./MainPage.css";
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
-import { useUser } from "../UserContext";
 
 
 const Main = () => {
     const navigate = useNavigate();
-    const { setUsername: setGlobalUsername } = useUser(); 
-    const [username, setUsername] = useState(""); 
-    const [password, setPassword] = useState(""); 
+    const [username, setUsername] = useState(""); // State for username
+    const [password, setPassword] = useState(""); // State for password
     const [error, setError] = useState("");
 
     const handleRegisterClick = () => {
@@ -35,19 +33,35 @@ const Main = () => {
             );
 
             if (response.status === 200) {
-                setGlobalUsername(username); // Save the username globally
-                const userRole = response.data.user_role;
+                const { user_role, user_id } = response.data;
 
-                if (userRole === "non-member") navigate("/non-member/schedule");
-                else if (userRole === "member") navigate("/member/schedule");
-                else if (userRole === "coach") navigate("/coach/schedule");
-                else if (userRole === "admin") navigate("/admin/report");
-                else if (userRole === "lifeguard") navigate("/lifeguard/upcoming-hours");
-                else navigate("/");
+                // Store data in localStorage
+                localStorage.setItem("userRole", user_role);
+                localStorage.setItem("userId", user_id);
+
+                // Navigate based on user role
+                if (user_role === "non-member") {
+                    navigate("/non-member/schedule");
+                } else if (user_role === "member") {
+                    localStorage.setItem("swimmerId", user_id);
+                    navigate("/member/schedule");
+                } else if (user_role === "coach") {
+                    localStorage.setItem("coachId", user_id);
+                    navigate("/coach/schedule");
+                } else if (user_role === "admin") {
+                    localStorage.setItem("adminId", user_id);
+                    navigate("/admin/report");
+                } else if (user_role === "lifeguard") {
+                    localStorage.setItem("lifeguardId", user_id);
+                    navigate("/lifeguard/upcoming-hours");
+                } else {
+                    navigate("/");
+                }
             } else {
-                setError("Login failed");
+                setError("Login failed. Please check your username and password.");
             }
         } catch (err) {
+            console.error("Login error:", err);
             setError("An unexpected error occurred.");
         }
     };

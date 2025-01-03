@@ -220,6 +220,7 @@ CREATE TABLE private_booking (
     private_booking_id SERIAL,
     swimmer_id INT,
     lane_id INT,
+    booking_date DATE NOT NULL,
     start_time TIME,
     end_time TIME,
     status VARCHAR(50) DEFAULT 'active',

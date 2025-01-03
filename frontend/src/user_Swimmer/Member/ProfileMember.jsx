@@ -1,20 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Sidebar from './LayoutMember.jsx';
 import './ProfileMember.css';
 
 const Profile = () => {
-    const initialUserData = {
-        name: 'John Doe',
-        email: 'johndoe@example.com',
-        profilePicture: 'https://via.placeholder.com/150',
-        password: 'password123',
-    };
-
-    const [userData, setUserData] = useState(initialUserData);
+    const [userData, setUserData] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [editedData, setEditedData] = useState(initialUserData);
+    const [editedData, setEditedData] = useState(null);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    // Fetch profile data
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const swimmerId = localStorage.getItem("swimmerId");
+            if (!swimmerId) {
+                setError("User not logged in.");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                // Fetch member data from GetMemberSwimmerView
+                const memberResponse = await axios.get(`http://127.0.0.1:8000/api/get_member/?user_id=${swimmerId}`);
+                
+                // Fetch user data from GetUserView
+                const userResponse = await axios.get(`http://127.0.0.1:8000/api/get_user/?user_id=${swimmerId}`);
+
+                if (memberResponse.data.member && userResponse.data.user) {
+                    const combinedData = {
+                        ...memberResponse.data.member,
+                        forename: userResponse.data.user.forename,
+                        surname: userResponse.data.user.surname,
+                        email: userResponse.data.user.username,
+                        profilePicture: userResponse.data.user.user_image,
+                        password: userResponse.data.user.password,
+                    };
+
+                    setUserData(combinedData);
+                    setEditedData(combinedData);
+                    setLoading(false);
+                } else {
+                    setError("Failed to fetch profile data.");
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error("Error fetching profile:", err);
+                setError("Failed to fetch profile data.");
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
@@ -30,28 +70,43 @@ const Profile = () => {
         }
     };
 
-    // Handle form submission
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setUserData(editedData);
-        setIsEditing(false);
+        const userId = localStorage.getItem("swimmerId");
+        if (!userId) {
+            alert("User not logged in.");
+            return;
+        }
 
-        // Optional: Save the uploaded file to the server
-        if (selectedFile) {
-            const formData = new FormData();
-            formData.append('profilePicture', selectedFile);
+        try {
+            // Update user and member data
+            await axios.post("http://127.0.0.1:8000/api/update_member_profile/", {
+                user_id: userId,
+                forename: editedData.forename,
+                surname: editedData.surname,
+                username: editedData.email,
+                password: editedData.password,
+            });
 
-            // Example API call to upload the image
-            // fetch('/api/upload', {
-            //     method: 'POST',
-            //     body: formData,
-            // }).then(() => alert('Profile updated successfully!'));
-        } else {
-            alert('Profile updated successfully!');
+            // Upload profile picture if selected
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append("user_id", userId);
+                formData.append("profilePicture", selectedFile);
+                await axios.post("/api/upload_profile_picture/", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+            }
+
+            setUserData(editedData);
+            setIsEditing(false);
+            alert("Profile updated successfully!");
+        } catch (err) {
+            console.error("Error updating profile:", err);
+            alert("Failed to update profile.");
         }
     };
 
-    // Handle cancel editing
     const handleCancel = () => {
         setEditedData(userData);
         setIsEditing(false);
@@ -59,8 +114,17 @@ const Profile = () => {
     };
 
     const handleLogout = () => {
-        alert('Logged out successfully!');
+        localStorage.removeItem("swimmerId");
+        alert("Logged out successfully!");
     };
+
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (error) {
+        return <div>Error: {error}</div>;
+    }
 
     return (
         <div className="profile-main-container">
@@ -71,13 +135,13 @@ const Profile = () => {
 
                     <div className="profile-user-info">
                         <img
-                            src={userData.profilePicture}
+                            src={userData.profilePicture || "https://via.placeholder.com/150"}
                             alt="Profile"
                             className="profile-picture"
                         />
                         {!isEditing ? (
                             <div className="profile-details">
-                                <p><strong>Name:</strong> {userData.name}</p>
+                                <p><strong>Name:</strong> {`${userData.forename} ${userData.surname}`}</p>
                                 <p><strong>Email:</strong> {userData.email}</p>
                                 <p>
                                     <strong>Password:</strong>
@@ -105,12 +169,23 @@ const Profile = () => {
                         ) : (
                             <form className="profile-edit-form" onSubmit={handleSubmit}>
                                 <div className="profile-form-group">
-                                    <label htmlFor="name">Name:</label>
+                                    <label htmlFor="forename">First Name:</label>
                                     <input
                                         type="text"
-                                        id="name"
-                                        name="name"
-                                        value={editedData.name}
+                                        id="forename"
+                                        name="forename"
+                                        value={editedData.forename}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="profile-form-group">
+                                    <label htmlFor="surname">Last Name:</label>
+                                    <input
+                                        type="text"
+                                        id="surname"
+                                        name="surname"
+                                        value={editedData.surname}
                                         onChange={handleChange}
                                         required
                                     />

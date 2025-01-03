@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import base64
 
 
 class GetCSRFTokenView(View):
@@ -655,27 +656,55 @@ class AllSwimmersView(View):
             all_swimmers.append(user_data)
         return JsonResponse({"swimmers": all_swimmers})
     
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class GetUserView(View):
     permission_classes = [AllowAny]
-    def get(self, request):
-        user_id = request.GET.get('user_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM user WHERE id = %s", [user_id])
-            user = cursor.fetchone()
 
-        if user:
-            user_data = {
-                "user_id": user[0],
-                "user_image": user[1],
-                "forename": user[2],
-                "surname": user[3],
-                "username": user[4],
-                "password": user[5],
-                "user_type": user[6]
-            }
-        
-        return JsonResponse({"user": user_data})
+    def get(self, request):
+        user_id = request.GET.get('user_id')  # Get user_id from the query parameters
+        if not user_id:
+            return JsonResponse({"error": "User ID is required."}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        user_id, 
+                        user_image, 
+                        forename, 
+                        surname, 
+                        username, 
+                        password, 
+                        user_type 
+                    FROM all_users 
+                    WHERE user_id = %s
+                """, [user_id])  # Query the correct table and column
+                user = cursor.fetchone()
+
+            if user:
+                # Convert binary data (e.g., `user_image`) to Base64 if it exists
+                user_image = (
+                    base64.b64encode(user[1]).decode('utf-8') 
+                    if user[1] is not None else None
+                )
+
+                user_data = {
+                    "user_id": user[0],
+                    "user_image": user_image,
+                    "forename": user[2],
+                    "surname": user[3],
+                    "username": user[4],
+                    "password": user[5],
+                    "user_type": user[6],
+                }
+                return JsonResponse({"user": user_data}, status=200)
+            else:
+                return JsonResponse({"error": "User not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred.", "details": str(e)}, status=500)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CreateUserView(View):
@@ -801,42 +830,100 @@ class DeleteUserView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateMemberProfileView(View):
     permission_classes = [AllowAny]
+
     def post(self, request):
-        data = json.loads(request.body)
-        user_id = data.get("user_id")
-        user_image = data.get("user_image")
-        forename = data.get('forename')
-        surname = data.get('surname')
-        username = data.get('username')
-        password = data.get('password')
-        total_money = data.get("total_money")
-        swim_proficiency = data.get("swim_proficiency")
-        number_of_booked_slots = data.get("number_of_booked_slots")
-        total_courses_enrolled = data.get("total_courses_enrolled")
-        total_courses_terminated = data.get("total_courses_terminated")
-        membership_status = data.get("membership_status")
-        points = data.get("points")
-        monthly_payment_amount = data.get("monthly_payment")
-        number_of_personal_training_hours = data.get("number_of_personal_training_hours")
-        ranking = data.get("ranking")
-        number_of_items_purchased = data.get("number_of_items_purchases")
-        age = data.get("age")
-        gender = data.get("gender")
-        phone_number = data.get("phone_number")
-        
-        with connection.cursor() as cursor:
-                cursor.execute("UPDATE all_users SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s WHERE user_id=%s",
-                               [user_image, forename, surname, username, password, user_id])
-                
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE swimmer SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, number_of_booked_slots=%s, total_courses_enrolled=%s, total_courses_terminated=%s, membership_status=%s, total_money=%s WHERE swimmer_id=%s",
-                            [phone_number, age, gender, swim_proficiency, number_of_booked_slots, total_courses_enrolled, total_courses_terminated, membership_status, total_money, user_id])
-            
-        with connection.cursor() as cursor:
-            cursor.execute("UPDATE member_swimmer SET points=%s, monthly_payment_amount=%s, number_of_personal_training_hours=%s, ranking=%s, number_of_items_purchased=%s WHERE swimmer_id=%s",
-                            [points, monthly_payment_amount, number_of_personal_training_hours, ranking, number_of_items_purchased])
-        
-        return JsonResponse({"message": "Member updated successfully"})
+        try:
+            data = json.loads(request.body)
+
+            # Extract required fields
+            user_id = data.get("user_id")
+            if not user_id:
+                return JsonResponse({"error": "User ID is required."}, status=400)
+
+            # Data for `all_users` table
+            user_image = data.get("user_image")
+            forename = data.get("forename")
+            surname = data.get("surname")
+            username = data.get("username")
+            password = data.get("password")
+
+            # Data for `swimmer` table
+            total_money = data.get("total_money")
+            swim_proficiency = data.get("swim_proficiency")
+            number_of_booked_slots = data.get("number_of_booked_slots")
+            total_courses_enrolled = data.get("total_courses_enrolled")
+            total_courses_terminated = data.get("total_courses_terminated")
+            membership_status = data.get("membership_status")
+            age = data.get("age")
+            gender = data.get("gender")
+            phone_number = data.get("phone_number")
+
+            # Data for `member_swimmer` table
+            points = data.get("points")
+            monthly_payment_amount = data.get("monthly_payment")
+            number_of_personal_training_hours = data.get("number_of_personal_training_hours")
+            ranking = data.get("ranking")
+            number_of_items_purchased = data.get("number_of_items_purchases")
+
+            # Check if member exists in `member_swimmer` table
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT swimmer_id FROM member_swimmer WHERE swimmer_id=%s", [user_id])
+                member_exists = cursor.fetchone()
+
+            if not member_exists:
+                return JsonResponse({"error": "Member does not exist in member_swimmer table."}, status=404)
+
+            # Update `all_users` table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE all_users 
+                    SET user_image=%s, forename=%s, surname=%s, username=%s, password=%s
+                    WHERE user_id=%s
+                    """,
+                    [user_image, forename, surname, username, password, user_id]
+                )
+
+            # Update `swimmer` table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE swimmer 
+                    SET phone_number=%s, age=%s, gender=%s, swimming_proficiency=%s, 
+                        number_of_booked_slots=%s, total_courses_enrolled=%s, 
+                        total_courses_terminated=%s, membership_status=%s, total_money=%s
+                    WHERE swimmer_id=%s
+                    """,
+                    [
+                        phone_number, age, gender, swim_proficiency, 
+                        number_of_booked_slots, total_courses_enrolled, 
+                        total_courses_terminated, membership_status, total_money, user_id
+                    ]
+                )
+
+            # Update `member_swimmer` table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE member_swimmer 
+                    SET points=%s, monthly_payment_amount=%s, 
+                        number_of_personal_training_hours=%s, ranking=%s, 
+                        number_of_items_purchased=%s
+                    WHERE swimmer_id=%s
+                    """,
+                    [
+                        points, monthly_payment_amount, 
+                        number_of_personal_training_hours, ranking, 
+                        number_of_items_purchased, user_id
+                    ]
+                )
+
+            return JsonResponse({"message": "Member profile updated successfully."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while updating the profile.", "details": str(e)}, status=500)
+
+
      
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateNonmemberProfileView(View):
@@ -965,48 +1052,54 @@ class UpdateAdministratorProfileView(View):
         
         return JsonResponse({"message": "Admin updated successfully"})
     
-@method_decorator(csrf_exempt, name='dispatch')
-class GetUserView(View):
-    permission_classes = [AllowAny]
-    def get(self, request):
-        user_id = request.GET.get('user_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM user WHERE id = %s", [user_id])
-            user = cursor.fetchone()
 
-        if user:
-            user_data = {
-                "user_id": user[0],
-                "username": user[1],
-                "email": user[2],
-                "role": user[3],
-            }
-            return JsonResponse({"profile": user_data})
-        else:
-            return JsonResponse({"error": "User not found"}, status=404)
         
 @method_decorator(csrf_exempt, name='dispatch')
 class GetMemberSwimmerView(View):
     permission_classes = [AllowAny]
-    def get(self, request):
-        member_id = request.GET.get('member_id')
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM member_swimmer WHERE swimmer_id = %s", [member_id])
-            user = cursor.fetchone()
 
-        if user:
-            user_data = {
-                "swimmer_id": user[0],
-                "points": user[1],
-                "monthly_payment_amount": user[2],
-                "number_of_personal_training_hours": user[3],
-                "ranking": user[4],
-                "number_of_items_purchased": user[5],
-            }
-            return JsonResponse({"member": user_data})
-        else:
-            return JsonResponse({"error": "Member not found"}, status=404)
-    
+    def get(self, request):
+        # Extract user_id (swimmerId in frontend) from the request
+        user_id = request.GET.get('user_id')
+
+        if not user_id:
+            return JsonResponse({"error": "User ID is required."}, status=400)
+
+        try:
+            # Fetch member details from the database
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT swimmer_id, points, monthly_payment_amount, 
+                           number_of_personal_training_hours, ranking, number_of_items_purchased
+                    FROM member_swimmer 
+                    WHERE swimmer_id = %s
+                    """,
+                    [user_id]
+                )
+                user = cursor.fetchone()
+
+            # If member is found, return their details
+            if user:
+                user_data = {
+                    "swimmer_id": user[0],
+                    "points": user[1],
+                    "monthly_payment_amount": user[2],
+                    "number_of_personal_training_hours": user[3],
+                    "ranking": user[4],
+                    "number_of_items_purchased": user[5],
+                }
+                return JsonResponse({"member": user_data}, status=200)
+            else:
+                return JsonResponse({"error": "Member not found."}, status=404)
+
+        except Exception as e:
+            return JsonResponse(
+                {"error": "An error occurred while fetching member details.", "details": str(e)},
+                status=500
+            )
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class GetNonmemberSwimmerView(View):
     permission_classes = [AllowAny]
@@ -1535,25 +1628,43 @@ class BookSlotLifeguardView(View):
             return JsonResponse({"error": "An error occurred", "details": str(e)}, status=500)
 
 
-#todo
 @method_decorator(csrf_exempt, name='dispatch')
 class UpcomingPoolBookingsView(View):
     permission_classes = [AllowAny]
+
     def get(self, request):
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM pool_bookings WHERE booking_time >= CURRENT_TIMESTAMP")
-            bookings = cursor.fetchall()
-        
-        booking_data = [
-            {
-                "booking_id": booking[0],
-                "user_id": booking[1],
-                "pool_id": booking[2],
-                "lane_id": booking[3],
-                "booking_time": booking[4]
-            } for booking in bookings
-        ]
-        return JsonResponse({"upcoming_bookings": booking_data})
+        swimmer_id = request.GET.get('swimmer_id')
+
+        if not swimmer_id:
+            return JsonResponse({"error": "Swimmer ID is required."}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT * FROM private_booking 
+                    WHERE swimmer_id = %s 
+                    AND (booking_date > CURRENT_DATE OR (booking_date = CURRENT_DATE AND start_time >= CURRENT_TIME))
+                """, [swimmer_id])
+                bookings = cursor.fetchall()
+
+            if not bookings:
+                return JsonResponse({"upcoming_bookings": [], "message": "No upcoming bookings found for the swimmer."}, status=200)
+
+            booking_data = [
+                {
+                    "private_booking_id": booking[0],
+                    "swimmer_id": booking[1],
+                    "lane_id": booking[2],
+                    "start_time": booking[3],
+                    "end_time": booking[4],
+                    "status": booking[5],
+                    "booking_date": booking[6]
+                } for booking in bookings
+            ]
+            return JsonResponse({"upcoming_bookings": booking_data}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred while fetching upcoming bookings.", "details": str(e)}, status=500)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GetTotalMoneyView(View):
@@ -1569,32 +1680,59 @@ class GetTotalMoneyView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class GetBalanceView(View):
     permission_classes = [AllowAny]
+    
     def get(self, request):
         worker_id = request.GET.get('worker_id')
+        
+        if not worker_id:
+            return JsonResponse({"error": "Worker ID is required."}, status=400)
+        
         with connection.cursor() as cursor:
             cursor.execute("SELECT balance FROM worker WHERE worker_id=%s", [worker_id])
             balance = cursor.fetchone()
-    
-        return JsonResponse({"balance": balance[0]})
+        
+        if balance:
+            return JsonResponse({"balance": balance[0]}, status=200)
+        else:
+            return JsonResponse({"error": "Worker not found or no balance available."}, status=404)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WithdrawMoneyView(View):
     permission_classes = [AllowAny]
+
     def post(self, request):
-        data = json.loads(request.body)
-        swimmer_id = data.get('swimmer_id')
-        amount = float(data.get('amount'))
+        try:
+            data = json.loads(request.body)
+            worker_id = data.get('worker_id')
+            amount = float(data.get('amount'))
 
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT total FROM swimmer WHERE swimmer_id=%s", [swimmer_id])
-            total_money = cursor.fetchone()
-            
-            if not total_money or total_money[0] < amount:
-                return JsonResponse({"error": "Insufficient funds or user not found"}, status=400)
+            if not worker_id or amount <= 0:
+                return JsonResponse({"error": "Invalid worker ID or amount."}, status=400)
 
-            cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [amount, swimmer_id])
-        
-        return JsonResponse({"message": "Withdrawal successful"})
+            with connection.cursor() as cursor:
+                # Check if worker exists and has sufficient balance
+                cursor.execute("SELECT balance FROM worker WHERE worker_id=%s", [worker_id])
+                result = cursor.fetchone()
+
+                if not result:
+                    return JsonResponse({"error": "Worker not found."}, status=404)
+
+                balance = result[0]
+                if balance < amount:
+                    return JsonResponse({"error": "Insufficient funds."}, status=400)
+
+                # Deduct amount from balance
+                cursor.execute(
+                    "UPDATE worker SET balance = balance - %s WHERE worker_id = %s",
+                    [amount, worker_id]
+                )
+
+            return JsonResponse({"message": "Withdrawal successful."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": "An error occurred.", "details": str(e)}, status=500)
+
     
 @method_decorator(csrf_exempt, name='dispatch')
 class WithdrawMoneyWorkerView(View):
