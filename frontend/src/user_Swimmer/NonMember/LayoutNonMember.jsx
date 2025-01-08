@@ -36,15 +36,21 @@ const LayoutNonMember = () => {
   useEffect(() => {
       const fetchBalance = async () => {
         try {
-          const swimmerId = localStorage.getItem("nonMemberId");
-          if (!swimmerId) throw new Error("Swimmer ID not found");
+          const swimmer_id = localStorage.getItem("nonMemberId");
+          if (!swimmer_id) throw new Error("Swimmer ID not found");
   
-          const response = await axios.get(`http://127.0.0.1:8000/api/get_nonmember/${swimmerId}/`, {
+          const response = await axios.get(`http://127.0.0.1:8000/api/get_nonmember/?swimmer_id=${swimmer_id}`, {
             withCredentials: true,
           });
   
-          if (response.status === 200 && response.data.balance) {
-            setBalance(response.data.balance);
+          if (response.status === 200) {
+            if(response.data.user.balance != null){
+              setBalance(response.data.user.balance);
+            }
+            else
+            {
+              setBalance(0);
+            }
           } else {
             console.error("Failed to fetch balance:", response);
           }
@@ -164,7 +170,7 @@ const LayoutNonMember = () => {
 
       if (response.status === 200) {
         alert("Deposit successful!");
-        setBalance((prevBalance) => prevBalance + amount); 
+        window.location.reload();
       } else {
         setError(response.data.error || "Failed to deposit money.");
       }
@@ -178,8 +184,6 @@ const LayoutNonMember = () => {
 
 
   const handleLogout = () => {
-    // Perform logout operations here (e.g., remove tokens)
-    // Remove user role and other relevant data
     localStorage.removeItem('userRole');
     localStorage.removeItem('userPoints'); // Clear user points on logout
     localStorage.removeItem('balance'); // Clear balance on logout

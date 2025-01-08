@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './LayoutNonMember.jsx';
 import './BecomeMember.css';
+import axios from 'axios';
 
 const Membership = () => {
-    // Initialize memberships from localStorage or as an empty array
+    const navigate = useNavigate();
+
     const [memberships, setMemberships] = useState(() => {
         const savedMemberships = localStorage.getItem('membership-data');
         return savedMemberships ? JSON.parse(savedMemberships) : [];
     });
 
-    // Form state
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -18,13 +20,11 @@ const Membership = () => {
         membershipPlan: 'Basic',
     });
 
-    // Submission status
     const [submissionStatus, setSubmissionStatus] = useState({
         success: null,
         message: '',
     });
 
-    // Handle input changes
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prevData) => ({
@@ -33,7 +33,6 @@ const Membership = () => {
         }));
     };
 
-    // Simple validation functions
     const validateEmail = (email) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
@@ -44,14 +43,17 @@ const Membership = () => {
         return phoneRegex.test(phone);
     };
 
-    // Handle form submission
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const { fullName, email, phone, address, membershipPlan } = formData;
+        const { fullName, email, phone, membershipPlan } = formData;
 
-        // Basic validation
-        if (!fullName || !email || !phone || !address || !membershipPlan) {
+        if (
+            !fullName.trim() ||
+            !email.trim() ||
+            !phone.trim() ||
+            !membershipPlan
+        ) {
             setSubmissionStatus({
                 success: false,
                 message: 'Please fill in all required fields.',
@@ -75,30 +77,26 @@ const Membership = () => {
             return;
         }
 
-        // Create new membership entry
-        const newMembership = {
-            id: Date.now(),
-            ...formData,
-            registrationDate: new Date().toISOString(),
-        };
+        try {
+            const user_id = localStorage.getItem("nonMemberId");
+            const response = await axios.post('http://127.0.0.1:8000/api/become_member/', { user_id });
 
-        // Update state and localStorage
-        const updatedMemberships = [...memberships, newMembership];
-        setMemberships(updatedMemberships);
-        localStorage.setItem('membership-data', JSON.stringify(updatedMemberships));
+            if(response.status === 200) {
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('balance'); 
+                navigate('/'); 
+            }
 
-        // Reset form and set success message
-        setFormData({
-            fullName: '',
-            email: '',
-            phone: '',
-            address: '',
-            membershipPlan: 'Basic',
-        });
-        setSubmissionStatus({
-            success: true,
-            message: 'Thank you for registering! Your membership is now active.',
-        });
+        } catch (error) {
+            const errorMessage =
+                error.response?.data?.error ||
+                'An error occurred while processing the membership.';
+            setSubmissionStatus({
+                success: false,
+                message: errorMessage,
+            });
+            console.error('Error in handleSubmit:', error);
+        }
     };
 
     return (

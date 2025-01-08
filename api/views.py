@@ -1236,14 +1236,12 @@ class GetMemberSwimmerView(View):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        # Extract user_id (swimmerId in frontend) from the request
         user_id = request.GET.get('user_id')
 
         if not user_id:
             return JsonResponse({"error": "User ID is required."}, status=400)
 
         try:
-            # Fetch member details from the database
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
@@ -1255,8 +1253,18 @@ class GetMemberSwimmerView(View):
                     [user_id]
                 )
                 user = cursor.fetchone()
+                
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT total_money
+                    FROM swimmer
+                    WHERE swimmer_id = %s
+                    """,
+                    [user_id]
+                )
+                balance = cursor.fetchone()[0]
 
-            # If member is found, return their details
             if user:
                 user_data = {
                     "swimmer_id": user[0],
@@ -1265,6 +1273,7 @@ class GetMemberSwimmerView(View):
                     "number_of_personal_training_hours": user[3],
                     "ranking": user[4],
                     "number_of_items_purchased": user[5],
+                    "balance": balance
                 }
                 return JsonResponse({"member": user_data}, status=200)
             else:
@@ -1279,43 +1288,47 @@ class GetMemberSwimmerView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class GetNonmemberSwimmerView(View):
     def get(self, request):
-        # Get the `user_id` from the request's query parameters
         user_id = request.GET.get('swimmer_id')
 
-        # If `user_id` is not provided, return an error response
-        if not user_id:
-            return JsonResponse({"error": "User ID is required."}, status=400)
-
         try:
-            # Query the database to get user details
+            
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, user_image, forename, surname, username, password, email, total_money
-                    FROM all_users, swimmer
+                    SELECT user_id, user_image, forename, surname, username, password, email
+                    FROM all_users
                     WHERE user_id = %s
                     """,
                     [user_id]
                 )
                 user_data = cursor.fetchone()
+                
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT total_money
+                    FROM swimmer
+                    WHERE swimmer_id = %s
+                    """,
+                    [user_id]
+                )
+                balance = cursor.fetchone()[0]
 
-            # Check if user data is retrieved
             if user_data:
                 # Convert the `BYTEA` image into Base64 format (if it exists)
                 user_image_base64 = None
                 if user_data[1]:  # Check if `user_image` is not NULL
                     user_image_base64 = base64.b64encode(user_data[1]).decode('utf-8')
 
-                # Construct a dictionary with user details
                 user_details = {
                     "user_id": user_data[0],
-                    "user_image": user_image_base64,  # Base64 encoded image
+                    "user_image": user_image_base64,  
                     "forename": user_data[2],
                     "surname": user_data[3],
                     "username": user_data[4],
                     "password": user_data[5],
                     "email": user_data[6],
-                    "total_money": user_data[7]
+                    "balance": balance
                 }
 
                 # Return user details as JSON
@@ -1324,7 +1337,6 @@ class GetNonmemberSwimmerView(View):
                 return JsonResponse({"error": "User not found."}, status=404)
 
         except Exception as e:
-            # Handle exceptions and return an error message
             return JsonResponse(
                 {"error": "An error occurred while fetching user details.", "details": str(e)},
                 status=500
@@ -1452,7 +1464,6 @@ class BecomeMemberView(View):
                 return JsonResponse({"error": "User ID is required."}, status=400)
 
             with connection.cursor() as cursor:
-                # Fetch swimmer's balance
                 cursor.execute("SELECT total_money FROM swimmer WHERE swimmer_id = %s", [user_id])
                 swimmer_money = cursor.fetchone()
 
@@ -1461,35 +1472,27 @@ class BecomeMemberView(View):
 
                 total_money = swimmer_money[0]
 
-                # Check if balance is sufficient for membership (100 TL)
-                membership_fee = 100
+                membership_fee = 50
                 if total_money < membership_fee:
                     return JsonResponse({"error": "Insufficient funds to become a member."}, status=400)
 
-                # Deduct 100 TL for membership
                 cursor.execute("UPDATE swimmer SET total_money = total_money - %s WHERE swimmer_id = %s", [membership_fee, user_id])
-
-                # Update user's membership status
                 cursor.execute("UPDATE all_users SET user_type = '2' WHERE user_id = %s", [user_id])
                 cursor.execute("UPDATE swimmer SET membership_status = 'member' WHERE swimmer_id = %s", [user_id])
-
-                # Add entry to member_swimmer table
+                
                 cursor.execute("""
                     INSERT INTO member_swimmer (swimmer_id, points, monthly_payment_amount, 
                                                 number_of_personal_training_hours, ranking, 
                                                 number_of_items_purchased)
                     VALUES (%s, 0, 0, 0, 0, 0)
                 """, [user_id])
-
-                # Remove from nonmember_swimmer table
+                
                 cursor.execute("DELETE FROM nonmember_swimmer WHERE swimmer_id = %s", [user_id])
-
-            # Clear session to force re-login if needed
+                
             request.session.flush()
             return JsonResponse({"message": "User has successfully become a member."}, status=200)
 
         except Exception as e:
-            # Log the exception for debugging
             print(f"Error in BecomeMemberView: {e}")
             return JsonResponse({"error": "An error occurred while processing the membership.", "details": str(e)}, status=500)
 

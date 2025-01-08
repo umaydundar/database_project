@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './LayoutMember.css';
 import 'boxicons/css/boxicons.min.css';
+import axios from 'axios';
 
 const LayoutMember = () => {
   const location = useLocation();
@@ -30,11 +31,36 @@ const LayoutMember = () => {
   // Determine user role
   const userRole = localStorage.getItem('userRole') || 'member'; // Default to 'member'
 
-  // Fetch balance from localStorage on component mount
+  
   useEffect(() => {
-    const storedBalance = parseFloat(localStorage.getItem('balance')) || 0;
-    setBalance(storedBalance);
+    const fetchBalance = async () => {
+      try {
+        const swimmer_id = localStorage.getItem("swimmerId");
+        if (!swimmer_id) throw new Error("Swimmer ID not found");
+
+        const response = await axios.get(`http://127.0.0.1:8000/api/get_member/?user_id=${swimmer_id}`, {
+          withCredentials: true,
+        });
+
+        if (response.status === 200) {
+          if(response.data.member.balance != null){
+            setBalance(response.data.member.balance);
+          }
+          else
+          {
+            setBalance(0);
+          }
+        } else {
+          console.error("Failed to fetch balance:", response);
+        }
+      } catch (err) {
+        console.error("Error fetching balance:", err);
+      }
+    };
+
+    fetchBalance();
   }, []);
+
 
   // Function to open the modal
   const openModal = () => {

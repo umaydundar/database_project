@@ -85,5 +85,5 @@ urlpatterns = [
     path("lifeguard_cancel_shift/", CancelLifeguardShiftView.as_view(), name="cancel_lifeguard_shift"),
     path("lifeguard_avaliable_shift/", GetAvailableLanesView.as_view(), name="avaliable_lifeguard_shift"),
     path('course_students/', GetCourseStudentsView.as_view(), name='get_course_students'),
-     path('get_all_courses/', GetAllCoursesView.as_view(), name='get_all_courses')
+    path('get_all_courses/', GetAllCoursesView.as_view(), name='get_all_courses')
 ]

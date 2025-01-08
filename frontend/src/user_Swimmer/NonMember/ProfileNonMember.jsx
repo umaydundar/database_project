@@ -17,7 +17,7 @@ const Profile = () => {
     // Fetch profile data
     useEffect(() => {
         const fetchProfile = async () => {
-            const userId = localStorage.getItem("userId"); // Get user ID from local storage
+            const userId = localStorage.getItem("nonMemberId"); // Get user ID from local storage
             if (!userId) {
                 setError("User not logged in.");
                 setLoading(false);
@@ -26,7 +26,7 @@ const Profile = () => {
 
             try {
                 const response = await axios.get(
-                    `http://127.0.0.1:8000/api/get_nonmember/?user_id=${userId}`
+                    `http://127.0.0.1:8000/api/get_nonmember/?swimmer_id=${userId}`
                 );
 
                 if (response.status === 200 && response.data.user) {
